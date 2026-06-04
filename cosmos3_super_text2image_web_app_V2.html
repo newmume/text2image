@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Cosmos3 Super Text2Image AI</title>
+  
+  <!-- 導入 Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- 導入 Google 字體 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome 圖標 -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            nvidia: {
+              50: '#f4fbf0',
+              100: '#e5f7da',
+              200: '#ceefb6',
+              300: '#ace385',
+              400: '#83d151',
+              500: '#76B900', // NVIDIA 經典綠
+              600: '#4a8500',
+              700: '#386500',
+              800: '#2e5105',
+              900: '#274509',
+              950: '#112202',
+            },
+            darkBg: '#090D16',
+            cardBg: '#131926'
+          },
+          boxShadow: {
+            glow: '0 0 15px rgba(118, 185, 0, 0.4)',
+            glowPurple: '0 0 15px rgba(139, 92, 246, 0.4)',
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    body {
+      background-color: #090D16;
+      -webkit-tap-highlight-color: transparent;
+    }
+    /* 隱藏滾動條 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090D16;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1f293d;
+      border-radius: 3px;
+    }
+    /* 打字機效果或漸變動畫 */
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 0.6; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.03); }
+    }
+    .animate-pulse-glow {
+      animation: pulse-glow 2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="text-slate-100 font-sans antialiased min-h-screen flex flex-col pb-20 select-none">
+
+  <!-- 頂部導航列 -->
+  <header class="sticky top-0 z-40 bg-darkBg/80 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <!-- 仿 NVIDIA 經典綠色 Logo 標誌 -->
+      <div class="w-7 h-7 bg-nvidia-500 rounded-lg flex items-center justify-center shadow-glow animate-pulse">
+        <i class="fa-solid fa-cube text-darkBg text-sm font-bold"></i>
+      </div>
+      <div>
+        <h1 class="text-sm font-bold tracking-wider text-white">COSMOS 3</h1>
+        <p class="text-[10px] text-nvidia-400 font-semibold tracking-widest uppercase">Physical AI Generator</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="bg-slate-800/80 border border-slate-700 text-slate-300 text-[10px] px-2.5 py-1 rounded-full font-medium flex items-center gap-1">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+        v3.0 Super
+      </span>
+    </div>
+  </header>
+
+  <!-- 主內容容器 -->
+  <main class="flex-1 max-w-md mx-auto w-full px-4 pt-4 pb-6 overflow-y-auto">
+    
+    <!-- ================= 頁面一：生成器 (WAND) ================= -->
+    <section id="view-generator" class="space-y-5">
+      
+      <!-- 模式與金鑰設定折疊面板 -->
+      <div class="bg-cardBg border border-slate-800 rounded-2xl overflow-hidden transition-all duration-300 shadow-lg">
+        <button onclick="toggleSettings()" class="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-800/30 transition-colors">
+          <div class="flex items-center gap-2.5 text-left">
+            <div class="w-8 h-8 rounded-lg bg-nvidia-500/10 flex items-center justify-center text-nvidia-400">
+              <i class="fa-solid fa-sliders text-sm"></i>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-slate-200">生成引擎設定</p>
+              <p id="current-mode-badge" class="text-[10px] text-slate-400">目前使用：內建免設定引擎 (Imagen 4.0)</p>
+            </div>
+          </div>
+          <i id="settings-chevron" class="fa-solid fa-chevron-down text-slate-500 text-xs transition-transform duration-300"></i>
+        </button>
+        
+        <div id="settings-content" class="hidden border-t border-slate-800/60 p-4 space-y-4 bg-slate-900/40">
+          <!-- 引擎切換 -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-2">選擇運行模型</label>
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="switchEngine('gemini')" id="btn-engine-gemini" class="flex flex-col items-center justify-center py-2.5 px-3 rounded-xl border border-nvidia-500/40 bg-nvidia-500/10 text-nvidia-400 transition-all">
+                <i class="fa-solid fa-bolt text-sm mb-1"></i>
+                <span class="text-xs font-bold">免密鑰引擎</span>
+                <span class="text-[9px] opacity-80 mt-0.5">預覽首選・秒級出圖</span>
+              </button>
+              <button onclick="switchEngine('hf')" id="btn-engine-hf" class="flex flex-col items-center justify-center py-2.5 px-3 rounded-xl border border-slate-800 bg-slate-900 text-slate-400 transition-all">
+                <i class="fa-brands fa-hugging-face text-sm mb-1"></i>
+                <span class="text-xs font-bold">NVIDIA Cosmos 3</span>
+                <span class="text-[9px] opacity-80 mt-0.5">Hugging Face API</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- HF Token 輸入框 (僅在選擇 HF 時提示) -->
+          <div id="hf-token-wrapper" class="hidden space-y-3">
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <label class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                  <i class="fa-solid fa-key text-yellow-500"></i> Hugging Face Read Token
+                </label>
+                <a href="https://huggingface.co/settings/tokens" target="_blank" class="text-[10px] text-nvidia-400 hover:underline">
+                  如何獲取 Token？ <i class="fa-solid fa-arrow-up-right-from-square text-[8px]"></i>
+                </a>
+              </div>
+              <div class="relative">
+                <input type="password" id="hf-token-input" placeholder="hf_..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-nvidia-500 focus:ring-1 focus:ring-nvidia-500" />
+                <button onclick="toggleTokenVisibility()" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                  <i id="token-eye-icon" class="fa-solid fa-eye text-xs"></i>
+                </button>
+              </div>
+              <p class="text-[10px] text-slate-500">
+                * 此 Token 將安全地儲存於本機瀏覽器（Local Storage）。本模型名稱為：<code class="bg-slate-950 px-1 py-0.5 rounded text-nvidia-300">nvidia/Cosmos3-Super-Text2Image</code>
+              </p>
+            </div>
+          </div>
+
+          <!-- Gemini API Key 輸入區 (備用金鑰) -->
+          <div class="space-y-2 pt-3 border-t border-slate-800/60">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-key text-sky-400"></i> 自訂 Gemini API Key (選填)
+              </label>
+              <a href="https://aistudio.google.com/" target="_blank" class="text-[10px] text-sky-400 hover:underline">
+                取得免費 Key <i class="fa-solid fa-arrow-up-right-from-square text-[8px]"></i>
+              </a>
+            </div>
+            <div class="relative">
+              <input type="password" id="gemini-key-input" placeholder="AIzaSy... (選填，若連線失敗時使用)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-nvidia-500 focus:ring-1 focus:ring-nvidia-500" />
+              <button onclick="toggleGeminiKeyVisibility()" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                <i id="gemini-key-eye-icon" class="fa-solid fa-eye text-xs"></i>
+              </button>
+            </div>
+            <p class="text-[10px] text-slate-500">
+              * 預設使用系統內建金鑰。若提示詞改寫（Gemini）回報連線失敗，建議貼上您自訂的免費金鑰以確保順暢體驗。
+            </p>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- 提示詞輸入區 -->
+      <div class="bg-cardBg border border-slate-800 rounded-2xl p-4 shadow-lg space-y-3.5">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-300 tracking-wide flex items-center gap-1.5">
+            <i class="fa-solid fa-pen-nib text-nvidia-400"></i> 輸入生成靈感 (中英文皆可)
+          </span>
+          <span id="prompt-char-count" class="text-[10px] text-slate-500">0 / 500</span>
+        </div>
+        
+        <div class="relative">
+          <textarea id="prompt-textarea" oninput="updateCharCount()" rows="4" placeholder="例如：一個漫步在霓虹燈籠台北街頭的機械神龍，極致物理光澤、電影級光影..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-nvidia-500 focus:ring-1 focus:ring-nvidia-500 resize-none leading-relaxed"></textarea>
+          
+          <!-- 清除按鈕 -->
+          <button onclick="clearPrompt()" class="absolute right-3.5 bottom-3.5 w-6 h-6 bg-slate-800/80 hover:bg-slate-700/80 text-slate-400 hover:text-slate-200 rounded-full flex items-center justify-center transition-colors">
+            <i class="fa-solid fa-xmark text-xs"></i>
+          </button>
+        </div>
+
+        <!-- 快捷優化按鈕 -->
+        <div class="flex gap-2">
+          <button onclick="handlePromptUpsample()" id="btn-upsample" class="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 shadow-glowPurple hover:scale-[1.01] active:scale-[0.99] transition-all">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            <span>AI 提示詞大師最佳化</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 畫面比例選擇 -->
+      <div class="space-y-2">
+        <label class="text-xs font-bold text-slate-300 tracking-wide block flex items-center gap-1.5 px-1">
+          <i class="fa-solid fa-crop-simple text-nvidia-400"></i> 畫面比例 (Aspect Ratio)
+        </label>
+        <div class="grid grid-cols-3 gap-2.5">
+          <button onclick="selectRatio('1:1')" id="ratio-1-1" class="ratio-btn border border-nvidia-500 bg-nvidia-500/10 text-nvidia-400 py-3 rounded-xl flex flex-col items-center justify-center transition-all">
+            <div class="w-5 h-5 border-2 border-current rounded mb-1"></div>
+            <span class="text-[10px] font-bold">1:1 正方形</span>
+          </button>
+          <button onclick="selectRatio('16:9')" id="ratio-16-9" class="ratio-btn border border-slate-800 bg-slate-900 text-slate-400 py-3 rounded-xl flex flex-col items-center justify-center transition-all">
+            <div class="w-7 h-4 border-2 border-current rounded mb-1.5"></div>
+            <span class="text-[10px] font-bold">16:9 寬螢幕</span>
+          </button>
+          <button onclick="selectRatio('9:16')" id="ratio-9-16" class="ratio-btn border border-slate-800 bg-slate-900 text-slate-400 py-3 rounded-xl flex flex-col items-center justify-center transition-all">
+            <div class="w-4 h-7 border-2 border-current rounded mb-0.5"></div>
+            <span class="text-[10px] font-bold">9:16 直向海報</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 藝術風格預設 -->
+      <div class="space-y-2">
+        <label class="text-xs font-bold text-slate-300 tracking-wide block flex items-center gap-1.5 px-1">
+          <i class="fa-solid fa-palette text-nvidia-400"></i> 藝術風格預設 (Style Presets)
+        </label>
+        <div class="grid grid-cols-3 gap-2">
+          <!-- 新置頂三大熱門風格按鈕 -->
+          <button onclick="applyStyle('chinese', this)" class="style-btn bg-cardBg border border-slate-800 hover:border-slate-700 p-2.5 rounded-xl text-center active:scale-95 transition-all text-slate-300">
+            <span class="block text-base mb-0.5">🏮</span>
+            <span class="text-[10px] font-semibold block">中國風</span>
+          </button>
+          <button onclick="applyStyle('cute', this)" class="style-btn bg-cardBg border border-slate-800 hover:border-slate-700 p-2.5 rounded-xl text-center active:scale-95 transition-all text-slate-300">
+            <span class="block text-base mb-0.5">🧸</span>
+            <span class="text-[10px] font-semibold block">可愛風</span>
+          </button>
+          <button onclick="applyStyle('ghibli', this)" class="style-btn bg-cardBg border border-slate-800 hover:border-slate-700 p-2.5 rounded-xl text-center active:scale-95 transition-all text-slate-300">
+            <span class="block text-base mb-0.5">🌳</span>
+            <span class="text-[10px] font-semibold block">吉卜力</span>
+          </button>
+          
+          <!-- 經典藝術風格 -->
+          <button onclick="applyStyle('cyberpunk', this)" class="style-btn bg-cardBg border border-slate-800 hover:border-slate-700 p-2.5 rounded-xl text-center active:scale-95 transition-all text-slate-300">
+            <span class="block text-base mb-0.5">🌌</span>
+            <span class="text-[10px] font-semibold block">賽博朋克</span>
+          </button>
+          <button onclick="applyStyle('realistic', this)" class="style-btn bg-cardBg border border-slate-800 hover:border-slate-700 p-2.5 rounded-xl text-center active:scale-95 transition-all text-slate-300">
+            <span class="block text-base mb-0.5">📸</span>
+            <span class="text-[10px] font-semibold block">極致寫實</span>
+          </button>
+          <button onclick="applyStyle('anime', this)" class="style-btn bg-cardBg border border-slate-800 hover:border-slate-700 p-2.5 rounded-xl text-center active:scale-95 transition-all text-slate-300">
+            <span class="block text-base mb-0.5">🎏</span>
+            <span class="text-[10px] font-semibold block">日系動漫</span>
+          </button>
+          <button onclick="applyStyle('watercolor', this)" class="style-btn bg-cardBg border border-slate-800 hover:border-slate-700 p-2.5 rounded-xl text-center active:scale-95 transition-all text-slate-300">
+            <span class="block text-base mb-0.5">🎨</span>
+            <span class="text-[10px] font-semibold block">極光水彩</span>
+          </button>
+          <button onclick="applyStyle('physic-ai', this)" class="style-btn bg-cardBg border border-slate-800 hover:border-slate-700 p-2.5 rounded-xl text-center active:scale-95 transition-all text-slate-300">
+            <span class="block text-base mb-0.5">🧬</span>
+            <span class="text-[10px] font-semibold block">3D 物理AI</span>
+          </button>
+          <button onclick="applyStyle('empty', this)" class="style-btn bg-slate-900 border border-slate-800 p-2.5 rounded-xl text-center active:scale-95 transition-all text-slate-500">
+            <span class="block text-base mb-0.5">❌</span>
+            <span class="text-[10px] font-semibold block">無預設</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 生成主按鈕 -->
+      <button onclick="triggerGenerate()" id="btn-generate" class="w-full bg-gradient-to-r from-nvidia-500 to-emerald-500 hover:from-nvidia-400 hover:to-emerald-400 text-darkBg text-sm font-bold py-4 px-4 rounded-2xl flex items-center justify-center gap-2.5 shadow-glow hover:scale-[1.01] active:scale-[0.98] transition-all">
+        <i class="fa-solid fa-wand-magic-sparkles text-base"></i>
+        <span>開始生成 Cosmos 3 畫像</span>
+      </button>
+
+      <!-- 生圖狀態加載面板 (動態進度展示) -->
+      <div id="loader-panel" class="hidden bg-cardBg border border-slate-800 rounded-2xl p-5 space-y-4 shadow-lg">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-200">Cosmos 3 AI 生成中...</span>
+          <span id="loader-percent" class="text-xs font-bold text-nvidia-400">10%</span>
+        </div>
+        <!-- 進度條 -->
+        <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
+          <div id="loader-bar" class="bg-gradient-to-r from-nvidia-500 to-emerald-400 h-full w-[10%] transition-all duration-500"></div>
+        </div>
+        <!-- 進度詳細步驟 -->
+        <div class="space-y-2">
+          <div id="step-1" class="flex items-center gap-2.5 text-xs text-slate-300">
+            <i class="fa-solid fa-spinner animate-spin text-nvidia-400 text-[10px]"></i>
+            <span>正在建立安全連接與 API 驗證...</span>
+          </div>
+          <div id="step-2" class="flex items-center gap-2.5 text-xs text-slate-500">
+            <i class="fa-solid fa-circle-dot text-[8px]"></i>
+            <span>分發 MoT (Mixture-of-Transformers) 去噪張量...</span>
+          </div>
+          <div id="step-3" class="flex items-center gap-2.5 text-xs text-slate-500">
+            <i class="fa-solid fa-circle-dot text-[8px]"></i>
+            <span>高解析度擴散演算中 (共需 28 步)...</span>
+          </div>
+          <div id="step-4" class="flex items-center gap-2.5 text-xs text-slate-500">
+            <i class="fa-solid fa-circle-dot text-[8px]"></i>
+            <span>解碼潜在空間並渲染最終圖像。</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 生成結果顯示卡 -->
+      <div id="result-panel" class="hidden bg-cardBg border border-slate-800 rounded-2xl overflow-hidden shadow-lg space-y-4 p-4">
+        <div class="flex items-center justify-between px-1">
+          <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+            <i class="fa-regular fa-image text-nvidia-400"></i> 生成結果
+          </span>
+          <span id="result-engine-badge" class="text-[9px] bg-nvidia-950 border border-nvidia-800 text-nvidia-400 px-2 py-0.5 rounded">Cosmos 3 Engine</span>
+        </div>
+        
+        <!-- 圖像容器 -->
+        <div class="relative bg-slate-950 rounded-xl overflow-hidden group">
+          <img id="result-image" src="" alt="生成圖像" class="w-full h-auto max-h-[420px] object-contain mx-auto" />
+          
+          <!-- 水印 -->
+          <div class="absolute bottom-2.5 right-2.5 bg-darkBg/70 backdrop-blur border border-slate-800 text-[9px] font-bold tracking-wider text-nvidia-400 px-2 py-1 rounded">
+            COSMOS 3 SUPER
+          </div>
+        </div>
+
+        <!-- 操控動作按鈕 -->
+        <div class="grid grid-cols-2 gap-2.5 pt-1">
+          <button onclick="downloadResult()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-3 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all">
+            <i class="fa-solid fa-download"></i>
+            <span>儲存到手機</span>
+          </button>
+          <button onclick="copyGeneratedPrompt()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-3 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all">
+            <i class="fa-regular fa-copy"></i>
+            <span>複製完整提示詞</span>
+          </button>
+        </div>
+
+        <!-- 生成詳情折疊面板 -->
+        <div class="bg-slate-900/50 rounded-xl p-3 border border-slate-800/60">
+          <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">使用的提示詞</p>
+          <p id="result-prompt" class="text-xs text-slate-300 leading-relaxed line-clamp-3 select-text"></p>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ================= 頁面二：作品藝廊 (GALLERY) ================= -->
+    <section id="view-gallery" class="hidden space-y-4">
+      <div class="flex items-center justify-between px-1">
+        <div>
+          <h2 class="text-base font-bold text-white">我的創作品藝廊</h2>
+          <p class="text-[10px] text-slate-400">目前記錄保存在本次瀏覽階段中</p>
+        </div>
+        <button onclick="clearAllGallery()" class="text-slate-500 hover:text-red-400 text-xs flex items-center gap-1.5 py-1 px-2.5 rounded-lg hover:bg-slate-900 transition-colors">
+          <i class="fa-regular fa-trash-can"></i>
+          清空
+        </button>
+      </div>
+
+      <!-- 空白狀態 -->
+      <div id="gallery-empty" class="bg-cardBg border border-slate-800 rounded-2xl p-10 text-center space-y-3">
+        <div class="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center mx-auto text-slate-600">
+          <i class="fa-regular fa-images text-2xl"></i>
+        </div>
+        <p class="text-xs text-slate-300 font-medium">還沒有任何生成紀錄</p>
+        <p class="text-[10px] text-slate-500 max-w-xs mx-auto">立即前往生成器輸入您的靈感，Cosmos 3 將賦予其絕美的視覺物理真實感！</p>
+        <button onclick="switchTab('generator')" class="mt-2 bg-nvidia-500/10 hover:bg-nvidia-500/20 text-nvidia-400 border border-nvidia-500/30 text-xs font-bold py-2 px-4 rounded-xl transition-all">
+          開始第一張創作
+        </button>
+      </div>
+
+      <!-- 藝廊網格 -->
+      <div id="gallery-grid" class="grid grid-cols-2 gap-3.5 hidden">
+        <!-- 藝廊項目卡片將經由 JS 動態生成 -->
+      </div>
+    </section>
+
+    <!-- ================= 頁面三：模型指南 (INFO) ================= -->
+    <section id="view-info" class="hidden space-y-5">
+      <div class="text-center py-3">
+        <div class="inline-block w-12 h-12 rounded-full bg-nvidia-500/10 text-nvidia-400 flex items-center justify-center text-xl mb-2.5">
+          <i class="fa-solid fa-graduation-cap"></i>
+        </div>
+        <h2 class="text-base font-bold text-white">NVIDIA Cosmos 3 技術指南</h2>
+        <p class="text-[10px] text-slate-400">了解世界首款實體 AI 萬能大模型 (Omnimodal)</p>
+      </div>
+
+      <!-- 技術亮點卡片 -->
+      <div class="bg-cardBg border border-slate-800 rounded-2xl p-4 space-y-3 shadow-lg">
+        <h3 class="text-xs font-bold text-nvidia-400 tracking-wider uppercase flex items-center gap-1.5">
+          <i class="fa-solid fa-microchip"></i> 領先全球的開源文生圖架構
+        </h3>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          <strong>NVIDIA Cosmos 3</strong> 是一款參數量達 64B 的物理世界基礎大模型。在 Artificial Analysis 文生圖及影片生成基準排行榜上榮登<strong>開源模型第一名</strong>。
+        </p>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          其採用獨創的 <strong>Mixture-of-Transformers (MoT)</strong> 混合架構，能完美模擬真實物理定律中的重力、光影反射、以及物體間的精確力學碰撞，生成的畫面細緻且富有驚人的真實世界物理感知。
+        </p>
+      </div>
+
+      <!-- 快速上手指南 -->
+      <div class="bg-cardBg border border-slate-800 rounded-2xl p-4 space-y-3.5 shadow-lg">
+        <h3 class="text-xs font-bold text-indigo-400 tracking-wider uppercase flex items-center gap-1.5">
+          <i class="fa-solid fa-rocket"></i> 三步配置 Cosmos 3
+        </h3>
+        
+        <div class="space-y-3">
+          <div class="flex gap-3">
+            <span class="w-5 h-5 bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 font-bold rounded-full flex items-center justify-center text-[10px] shrink-0 mt-0.5">1</span>
+            <div>
+              <p class="text-xs font-bold text-slate-200">註冊並登入 Hugging Face</p>
+              <p class="text-[10px] text-slate-400">前往 huggingface.co 註冊帳號，即可享用免費的推論額度。</p>
+            </div>
+          </div>
+          
+          <div class="flex gap-3">
+            <span class="w-5 h-5 bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 font-bold rounded-full flex items-center justify-center text-[10px] shrink-0 mt-0.5">2</span>
+            <div>
+              <p class="text-xs font-bold text-slate-200">取得存取權金鑰 (Read Token)</p>
+              <p class="text-[10px] text-slate-400">在個人 Settings -> Access Tokens 創建一個擁有「Read」權限的安全 Token。</p>
+            </div>
+          </div>
+
+          <div class="flex gap-3">
+            <span class="w-5 h-5 bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 font-bold rounded-full flex items-center justify-center text-[10px] shrink-0 mt-0.5">3</span>
+            <div>
+              <p class="text-xs font-bold text-slate-200">貼入本 App 展開創作</p>
+              <p class="text-[10px] text-slate-400">點擊生成器頂部的「引擎設定」，切換到 NVIDIA Cosmos 3 並貼上 Token，即刻解鎖 64B 大模型生成！</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 技術特徵比較 -->
+      <div class="bg-cardBg border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
+        <div class="bg-slate-900 px-4 py-3 border-b border-slate-800">
+          <h4 class="text-xs font-bold text-slate-200">模型架構與輸出格式</h4>
+        </div>
+        <table class="w-full text-left text-[11px] text-slate-300">
+          <thead>
+            <tr class="border-b border-slate-800 bg-slate-950/40 text-slate-400 font-medium">
+              <th class="p-3">技術指標</th>
+              <th class="p-3">規格描述</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/50">
+            <tr>
+              <td class="p-3 font-semibold text-slate-200">模型參數大小</td>
+              <td class="p-3">64B (Super) / 16B (Nano)</td>
+            </tr>
+            <tr>
+              <td class="p-3 font-semibold text-slate-200">支援畫面比例</td>
+              <td class="p-3">1:1, 16:9, 9:16, 4:3, 3:4</td>
+            </tr>
+            <tr>
+              <td class="p-3 font-semibold text-slate-200">主要能力</td>
+              <td class="p-3">物理規律高精確度合成、高真實感去噪</td>
+            </tr>
+            <tr>
+              <td class="p-3 font-semibold text-slate-200">AI Upsampler</td>
+              <td class="p-3">代理人提示詞重構硬體 (Agentic Upsampling)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 全局 Toast 提示訊息 -->
+  <div id="toast-box" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 border border-slate-800 text-xs font-medium px-4 py-3 rounded-xl shadow-lg flex items-center gap-2.5 opacity-0 pointer-events-none transform -translate-y-2 transition-all duration-300">
+    <i id="toast-icon" class="fa-solid fa-circle-info text-nvidia-400"></i>
+    <span id="toast-text" class="text-slate-200">提示內容</span>
+  </div>
+
+  <!-- 手機版底部導航欄 -->
+  <nav class="fixed bottom-0 left-0 right-0 z-40 bg-darkBg/95 backdrop-blur-md border-t border-slate-800/80 px-6 py-2.5 flex items-center justify-between max-w-md mx-auto">
+    <!-- 生成器頁籤 -->
+    <button onclick="switchTab('generator')" id="nav-generator" class="flex flex-col items-center gap-1 text-nvidia-400 transition-colors py-1 px-3">
+      <i class="fa-solid fa-wand-magic-sparkles text-lg"></i>
+      <span class="text-[9px] font-bold">生成創作</span>
+    </button>
+    
+    <!-- 作品藝廊頁籤 -->
+    <button onclick="switchTab('gallery')" id="nav-gallery" class="flex flex-col items-center gap-1 text-slate-500 hover:text-slate-300 transition-colors py-1 px-3">
+      <div class="relative">
+        <i class="fa-regular fa-images text-lg"></i>
+        <span id="gallery-badge" class="absolute -top-1.5 -right-2 bg-nvidia-500 text-darkBg text-[8px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center hidden">0</span>
+      </div>
+      <span class="text-[9px] font-bold">作品藝廊</span>
+    </button>
+    
+    <!-- 模型資訊頁籤 -->
+    <button onclick="switchTab('info')" id="nav-info" class="flex flex-col items-center gap-1 text-slate-500 hover:text-slate-300 transition-colors py-1 px-3">
+      <i class="fa-solid fa-circle-info text-lg"></i>
+      <span class="text-[9px] font-bold">模型指南</span>
+    </button>
+  </nav>
+
+  <!-- ================= 核心邏輯 JavaScript ================= -->
+  <script>
+    // 預設與狀態管理
+    const apiKey = ""; // 執行環境會動態注入 Key，此處維持為空字串即可
+    let currentEngine = "gemini"; // 預設使用內建 Gemini 免設定生圖，可隨時手動切換至 hf
+    let currentRatio = "1:1";
+    let isGenerating = false;
+    let galleryItems = [];
+
+    // 初始化載入
+    window.onload = function() {
+      // 讀取本地保存的 HF Token 
+      const savedToken = localStorage.getItem("hf_cosmos_token");
+      if (savedToken) {
+        document.getElementById("hf-token-input").value = savedToken;
+        switchEngine("hf"); // 如果有 Token，預設切換為 Cosmos 3 模型
+      } else {
+        switchEngine("gemini");
+      }
+      
+      // 讀取本地保存的 Gemini API Key (自訂)
+      const savedGeminiKey = localStorage.getItem("user_gemini_key");
+      if (savedGeminiKey) {
+        document.getElementById("gemini-key-input").value = savedGeminiKey;
+      }
+      
+      // 載入作品藝廊
+      renderGallery();
+    };
+
+    // 提示框 Toast 控制
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById("toast-box");
+      const text = document.getElementById("toast-text");
+      const icon = document.getElementById("toast-icon");
+      
+      text.innerText = message;
+      
+      if (type === 'success') {
+        icon.className = "fa-solid fa-circle-check text-nvidia-500";
+      } else if (type === 'error') {
+        icon.className = "fa-solid fa-triangle-exclamation text-red-500";
+      } else if (type === 'warning') {
+        icon.className = "fa-solid fa-circle-exclamation text-yellow-500";
+      } else {
+        icon.className = "fa-solid fa-circle-info text-nvidia-400";
+      }
+
+      toast.classList.remove("opacity-0", "pointer-events-none", "-translate-y-2");
+      toast.classList.add("opacity-100", "translate-y-0");
+
+      setTimeout(() => {
+        toast.classList.remove("opacity-100", "translate-y-0");
+        toast.classList.add("opacity-0", "pointer-events-none", "-translate-y-2");
+      }, 4000);
+    }
+
+    // 切換設定面板折疊狀態
+    function toggleSettings() {
+      const content = document.getElementById("settings-content");
+      const chevron = document.getElementById("settings-chevron");
+      
+      if (content.classList.contains("hidden")) {
+        content.classList.remove("hidden");
+        chevron.style.transform = "rotate(180deg)";
+      } else {
+        content.classList.add("hidden");
+        chevron.style.transform = "rotate(0deg)";
+      }
+    }
+
+    // 切換生圖引擎
+    function switchEngine(engine) {
+      currentEngine = engine;
+      const btnGemini = document.getElementById("btn-engine-gemini");
+      const btnHF = document.getElementById("btn-engine-hf");
+      const tokenWrapper = document.getElementById("hf-token-wrapper");
+      const badge = document.getElementById("current-mode-badge");
+
+      if (engine === "gemini") {
+        btnGemini.className = "flex flex-col items-center justify-center py-2.5 px-3 rounded-xl border border-nvidia-500/40 bg-nvidia-500/10 text-nvidia-400 transition-all";
+        btnHF.className = "flex flex-col items-center justify-center py-2.5 px-3 rounded-xl border border-slate-800 bg-slate-900 text-slate-400 transition-all";
+        tokenWrapper.classList.add("hidden");
+        badge.innerText = "目前使用：內建免設定體驗引擎 (Imagen 4.0)";
+      } else {
+        btnHF.className = "flex flex-col items-center justify-center py-2.5 px-3 rounded-xl border border-nvidia-500/40 bg-nvidia-500/10 text-nvidia-400 transition-all";
+        btnGemini.className = "flex flex-col items-center justify-center py-2.5 px-3 rounded-xl border border-slate-800 bg-slate-900 text-slate-400 transition-all";
+        tokenWrapper.classList.remove("hidden");
+        badge.innerText = "目前使用：NVIDIA Cosmos 3 (Hugging Face)";
+      }
+    }
+
+    // 密鑰可見性切換 (Hugging Face)
+    function toggleTokenVisibility() {
+      const input = document.getElementById("hf-token-input");
+      const icon = document.getElementById("token-eye-icon");
+      if (input.type === "password") {
+        input.type = "text";
+        icon.className = "fa-solid fa-eye-slash text-xs";
+      } else {
+        input.type = "password";
+        icon.className = "fa-solid fa-eye text-xs";
+      }
+    }
+
+    // 密鑰可見性切換 (Gemini)
+    function toggleGeminiKeyVisibility() {
+      const input = document.getElementById("gemini-key-input");
+      const icon = document.getElementById("gemini-key-eye-icon");
+      if (input.type === "password") {
+        input.type = "text";
+        icon.className = "fa-solid fa-eye-slash text-xs";
+      } else {
+        input.type = "password";
+        icon.className = "fa-solid fa-eye text-xs";
+      }
+    }
+
+    // 限制與更新字數計數
+    function updateCharCount() {
+      const text = document.getElementById("prompt-textarea").value;
+      const countSpan = document.getElementById("prompt-char-count");
+      countSpan.innerText = `${text.length} / 500`;
+    }
+
+    function clearPrompt() {
+      document.getElementById("prompt-textarea").value = "";
+      updateCharCount();
+      
+      // 重設所有風格按鈕樣式
+      document.querySelectorAll(".style-btn").forEach(btn => {
+        if (btn.innerText.includes("無預設") || btn.innerHTML.includes("無預設") || btn.innerHTML.includes("❌")) {
+          btn.className = "style-btn bg-slate-900 border border-slate-800 p-2.5 rounded-xl text-center active:scale-95 transition-all text-slate-500";
+        } else {
+          btn.className = "style-btn bg-cardBg border border-slate-800 hover:border-slate-700 p-2.5 rounded-xl text-center active:scale-95 transition-all text-slate-300";
+        }
+      });
+    }
+
+    // 畫面比例選擇切換
+    function selectRatio(ratio) {
+      currentRatio = ratio;
+      document.querySelectorAll(".ratio-btn").forEach(btn => {
+        btn.className = "ratio-btn border border-slate-800 bg-slate-900 text-slate-400 py-3 rounded-xl flex flex-col items-center justify-center transition-all";
+      });
+      
+      const activeBtn = document.getElementById(`ratio-${ratio.replace(':', '-')}`);
+      if (activeBtn) {
+        activeBtn.className = "ratio-btn border border-nvidia-500 bg-nvidia-500/10 text-nvidia-400 py-3 rounded-xl flex flex-col items-center justify-center transition-all";
+      }
+    }
+
+    // 應用風格預設到 Prompt
+    function applyStyle(style, btnElement) {
+      const textarea = document.getElementById("prompt-textarea");
+      let originalText = textarea.value;
+
+      // 移除原先可能存在的風格綴詞
+      const styleRegex = /,\s*(traditional Chinese painting|ink wash style|elegant|dynasty core|detailed watercolor brushstrokes|ultra cute|chibi|pastel colors|3D clay render|toy aesthetic|Studio Ghibli style|hand-drawn anime|lush green hills|nostalgic anime aesthetic|cyberpunk|futuristic city|photorealistic|hyperdetailed|anime illustration|vibrant colors|oil painting|robotic physical simulation|nvidia style|precise physics|watercolor painting).*/gi;
+      originalText = originalText.replace(styleRegex, "");
+
+      // 重設所有風格按鈕到初始深色外觀
+      document.querySelectorAll(".style-btn").forEach(btn => {
+        if (btn.innerText.includes("無預設") || btn.innerHTML.includes("無預設") || btn.innerHTML.includes("❌")) {
+          btn.className = "style-btn bg-slate-900 border border-slate-800 p-2.5 rounded-xl text-center active:scale-95 transition-all text-slate-500";
+        } else {
+          btn.className = "style-btn bg-cardBg border border-slate-800 hover:border-slate-700 p-2.5 rounded-xl text-center active:scale-95 transition-all text-slate-300";
+        }
+      });
+
+      // 為點選的風格按鈕套用 NVIDIA 經典綠發光框
+      if (btnElement) {
+        if (style === 'empty') {
+          btnElement.className = "style-btn bg-slate-900 border border-nvidia-500 text-nvidia-400 p-2.5 rounded-xl text-center active:scale-95 transition-all shadow-glow";
+        } else {
+          btnElement.className = "style-btn border border-nvidia-500 bg-nvidia-500/10 text-nvidia-400 p-2.5 rounded-xl text-center active:scale-95 transition-all shadow-glow";
+        }
+      }
+
+      let styleSuffix = "";
+      switch(style) {
+        case 'chinese':
+          styleSuffix = ", traditional Chinese painting, ink wash style, elegant, dynasty core, detailed watercolor brushstrokes";
+          break;
+        case 'cute':
+          styleSuffix = ", ultra cute, chibi, pastel colors, 3D clay render, toy aesthetic, charming, soft lighting";
+          break;
+        case 'ghibli':
+          styleSuffix = ", Studio Ghibli style, hand-drawn anime, lush green hills, soft nostalgic lighting, nostalgic anime aesthetic, masterpiece";
+          break;
+        case 'cyberpunk':
+          styleSuffix = ", cyberpunk, futuristic city, neon glow, high-tech, unreal engine 5, 8k";
+          break;
+        case 'realistic':
+          styleSuffix = ", photorealistic, hyperdetailed, 8k resolution, cinematic lighting, dslr camera, sharp focus";
+          break;
+        case 'anime':
+          styleSuffix = ", anime illustration, beautiful hand-drawn art, vibrant colors, makoto shinkai style, high-res";
+          break;
+        case 'watercolor':
+          styleSuffix = ", watercolor painting, artistic splatters, soft lighting, masterpiece, detailed texture";
+          break;
+        case 'physic-ai':
+          styleSuffix = ", robotic physical simulation, precise physics, mechanical gears, metal textures, nvidia style, realistic raytracing";
+          break;
+        case 'empty':
+        default:
+          styleSuffix = "";
+          break;
+      }
+
+      textarea.value = originalText + styleSuffix;
+      updateCharCount();
+      showToast(`已套用相關風格標籤！`, 'success');
+    }
+
+    // 底欄導航列切換
+    function switchTab(tabId) {
+      document.getElementById("view-generator").classList.add("hidden");
+      document.getElementById("view-gallery").classList.add("hidden");
+      document.getElementById("view-info").classList.add("hidden");
+      
+      document.getElementById("nav-generator").className = "flex flex-col items-center gap-1 text-slate-500 hover:text-slate-300 transition-colors py-1 px-3";
+      document.getElementById("nav-gallery").className = "flex flex-col items-center gap-1 text-slate-500 hover:text-slate-300 transition-colors py-1 px-3";
+      document.getElementById("nav-info").className = "flex flex-col items-center gap-1 text-slate-500 hover:text-slate-300 transition-colors py-1 px-3";
+
+      document.getElementById(`view-${tabId}`).classList.remove("hidden");
+      document.getElementById(`nav-${tabId}`).className = "flex flex-col items-center gap-1 text-nvidia-400 transition-colors py-1 px-3";
+    }
+
+    // 指數退避重試請求封裝 (Exponential Backoff)
+    async function fetchWithRetry(url, options, maxRetries = 5) {
+      let delay = 1000;
+      for (let i = 0; i < maxRetries; i++) {
+        try {
+          const response = await fetch(url, options);
+          if (response.ok) return response;
+          if (response.status === 429 || response.status >= 500) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+            delay *= 2;
+            continue;
+          }
+          return response;
+        } catch (error) {
+          if (i === maxRetries - 1) throw error;
+          await new Promise(resolve => setTimeout(resolve, delay));
+          delay *= 2;
+        }
+      }
+    }
+
+    // AI 提示詞大師最佳化 - 調用 Gemini-2.5-Flash
+    async function handlePromptUpsample() {
+      const textarea = document.getElementById("prompt-textarea");
+      const originalPrompt = textarea.value.trim();
+      
+      if (!originalPrompt) {
+        showToast("請先輸入一點簡短的靈感，再讓 AI 大師進行最佳化！", "warning");
+        return;
+      }
+
+      const upsampleBtn = document.getElementById("btn-upsample");
+      const originalBtnHTML = upsampleBtn.innerHTML;
+      
+      upsampleBtn.disabled = true;
+      upsampleBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> <span>AI 正在精密改寫提示詞...</span>`;
+      
+      // 確定要使用的 Gemini API Key
+      let activeGeminiKey = apiKey;
+      const userGeminiKey = document.getElementById("gemini-key-input").value.trim();
+      
+      if (userGeminiKey) {
+        activeGeminiKey = userGeminiKey;
+        localStorage.setItem("user_gemini_key", userGeminiKey);
+      } else {
+        localStorage.removeItem("user_gemini_key");
+      }
+
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${activeGeminiKey}`;
+        
+        // 使用符合標準 API 的系統指令 Payload 結構
+        const payload = {
+          contents: [{
+            parts: [{ text: originalPrompt }]
+          }],
+          systemInstruction: {
+            parts: [{
+              text: "You are an expert prompt engineer for the NVIDIA Cosmos 3 (Cosmos3-Super-Text2Image) physical simulation and image diffusion model. Rewrite and significantly expand the user prompt into a highly detailed, visually stunning, and physically realistic English prompt. Ensure you describe the camera perspective, realistic physical properties, textures, materials, lighting details, and background setup to leverage the full 64B parameter physical modeling capability of Cosmos 3. Do not include introductory words or titles. Do not output markdown, just output the raw prompt in English."
+            }]
+          }
+        };
+
+        const response = await fetchWithRetry(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const errDetail = await response.text();
+          let parsedError;
+          try {
+            parsedError = JSON.parse(errDetail);
+          } catch(e) {}
+          const errorMsg = parsedError?.error?.message || errDetail || "未知伺服器錯誤";
+          throw new Error(`API 連線失敗 (${response.status})：${errorMsg}`);
+        }
+
+        const data = await response.json();
+        const optimizedText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+        
+        if (optimizedText) {
+          textarea.value = optimizedText;
+          updateCharCount();
+          showToast("AI 提示詞最佳化完成！已特別針對 Cosmos 3 優化物理和光影細節。", "success");
+        } else {
+          showToast("AI 傳回了空白優化，已維持原提示詞。", "warning");
+        }
+      } catch (err) {
+        console.error("Gemini Error: ", err);
+        showToast(`AI 優化失敗：${err.message}`, "error");
+        
+        // 若連線失敗，自動展開設定面板引導使用者配置個人金鑰
+        const settingsContent = document.getElementById("settings-content");
+        if (settingsContent.classList.contains("hidden")) {
+          toggleSettings();
+        }
+      } finally {
+        upsampleBtn.disabled = false;
+        upsampleBtn.innerHTML = originalBtnHTML;
+      }
+    }
+
+    // 開始影像生成主控制流
+    async function triggerGenerate() {
+      const textarea = document.getElementById("prompt-textarea");
+      const prompt = textarea.value.trim();
+
+      if (!prompt) {
+        showToast("請輸入生圖提示詞 (Prompt)！", "warning");
+        return;
+      }
+
+      if (isGenerating) return;
+      isGenerating = true;
+
+      // 介面鎖定
+      document.getElementById("btn-generate").disabled = true;
+      document.getElementById("btn-generate").innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> 生成處理中...`;
+      
+      const loaderPanel = document.getElementById("loader-panel");
+      const resultPanel = document.getElementById("result-panel");
+      
+      loaderPanel.classList.remove("hidden");
+      resultPanel.classList.add("hidden");
+
+      // 進度重設與模擬跑條
+      updateLoader(10, "正在連線到安全生成網關...");
+      document.getElementById("step-1").className = "flex items-center gap-2.5 text-xs text-nvidia-400 font-medium";
+      document.getElementById("step-1").querySelector("i").className = "fa-solid fa-spinner animate-spin text-nvidia-400 text-[10px]";
+      
+      document.getElementById("step-2").className = "flex items-center gap-2.5 text-xs text-slate-500";
+      document.getElementById("step-2").querySelector("i").className = "fa-solid fa-circle-dot text-[8px]";
+      
+      document.getElementById("step-3").className = "flex items-center gap-2.5 text-xs text-slate-500";
+      document.getElementById("step-3").querySelector("i").className = "fa-solid fa-circle-dot text-[8px]";
+      
+      document.getElementById("step-4").className = "flex items-center gap-2.5 text-xs text-slate-500";
+      document.getElementById("step-4").querySelector("i").className = "fa-solid fa-circle-dot text-[8px]";
+
+      let progressInterval = setInterval(() => {
+        const percentElement = document.getElementById("loader-percent");
+        let cur = parseInt(percentElement.innerText);
+        if (cur < 90) {
+          let step = Math.floor(Math.random() * 8) + 4;
+          let nextPercent = Math.min(90, cur + step);
+          
+          if (nextPercent > 25 && nextPercent <= 50) {
+            updateLoader(nextPercent, "分發 MoT 去噪張量與物理模型計算...");
+            document.getElementById("step-1").className = "flex items-center gap-2.5 text-xs text-slate-400";
+            document.getElementById("step-1").querySelector("i").className = "fa-solid fa-circle-check text-nvidia-500 text-[10px]";
+            
+            document.getElementById("step-2").className = "flex items-center gap-2.5 text-xs text-nvidia-400 font-medium";
+            document.getElementById("step-2").querySelector("i").className = "fa-solid fa-spinner animate-spin text-nvidia-400 text-[10px]";
+          } else if (nextPercent > 50 && nextPercent <= 80) {
+            updateLoader(nextPercent, "高解析度物理擴散演算進行中...");
+            document.getElementById("step-2").className = "flex items-center gap-2.5 text-xs text-slate-400";
+            document.getElementById("step-2").querySelector("i").className = "fa-solid fa-circle-check text-nvidia-500 text-[10px]";
+            
+            document.getElementById("step-3").className = "flex items-center gap-2.5 text-xs text-nvidia-400 font-medium";
+            document.getElementById("step-3").querySelector("i").className = "fa-solid fa-spinner animate-spin text-nvidia-400 text-[10px]";
+          } else if (nextPercent > 80) {
+            updateLoader(nextPercent, "解碼潛在空間並合成最終像素...");
+            document.getElementById("step-3").className = "flex items-center gap-2.5 text-xs text-slate-400";
+            document.getElementById("step-3").querySelector("i").className = "fa-solid fa-circle-check text-nvidia-500 text-[10px]";
+            
+            document.getElementById("step-4").className = "flex items-center gap-2.5 text-xs text-nvidia-400 font-medium";
+            document.getElementById("step-4").querySelector("i").className = "fa-solid fa-spinner animate-spin text-nvidia-400 text-[10px]";
+          } else {
+            updateLoader(nextPercent);
+          }
+        }
+      }, 900);
+
+      try {
+        let imageUrl = "";
+        
+        if (currentEngine === "hf") {
+          // 1. 使用 Hugging Face 上的 nvidia/Cosmos3-Super-Text2Image 模型
+          const tokenInput = document.getElementById("hf-token-input").value.trim();
+          if (!tokenInput) {
+            toggleSettings(); // 自動展開面板方便使用者貼上 Token
+            throw new Error("請先在引擎設定中輸入您的 Hugging Face Access Token！");
+          }
+          
+          // 儲存 Token 到本地以便下次使用
+          localStorage.setItem("hf_cosmos_token", tokenInput);
+          
+          const hfUrl = "https://api-inference.huggingface.co/models/nvidia/Cosmos3-Super-Text2Image";
+          const response = await fetchWithRetry(hfUrl, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${tokenInput}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ 
+              inputs: prompt,
+              parameters: {
+                width: currentRatio === "16:9" ? 1280 : (currentRatio === "9:16" ? 720 : 1024),
+                height: currentRatio === "16:9" ? 720 : (currentRatio === "9:16" ? 1280 : 1024)
+              }
+            })
+          });
+
+          if (!response.ok) {
+            const errDetail = await response.text();
+            // 這裡提示使用者模型是否正在加載中
+            if (response.status === 503) {
+              throw new Error("模型正在 Hugging Face 後端熱機啟動中，請等待 10~20 秒後再次嘗試！");
+            }
+            throw new Error(`HF 端回傳錯誤 (${response.status})：${errDetail || '請確認 Token 是否正確與模型權限。'}`);
+          }
+
+          const blob = await response.blob();
+          imageUrl = URL.createObjectURL(blob);
+          
+        } else {
+          // 2. 免 Key 體驗引擎：調用預覽環境 Imagen 4.0 Pro
+          // 判斷是否使用自訂 Gemini 金鑰
+          let activeGeminiKey = apiKey;
+          const userGeminiKey = document.getElementById("gemini-key-input").value.trim();
+          if (userGeminiKey) {
+            activeGeminiKey = userGeminiKey;
+          }
+
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${activeGeminiKey}`;
+          const payload = {
+            instances: [
+              { prompt: prompt }
+            ],
+            parameters: {
+              sampleCount: 1,
+              aspectRatio: currentRatio
+            }
+          };
+
+          const response = await fetchWithRetry(geminiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+
+          if (!response.ok) {
+            const errDetail = await response.text();
+            let parsedError;
+            try { parsedError = JSON.parse(errDetail); } catch(e) {}
+            const errorMsg = parsedError?.error?.message || errDetail || "未知連線錯誤";
+            throw new Error(`Imagen 預覽引擎回報錯誤 (${response.status})：${errorMsg}`);
+          }
+
+          const resultData = await response.json();
+          const b64Bytes = resultData.predictions?.[0]?.bytesBase64Encoded;
+          if (!b64Bytes) {
+            throw new Error("未能成功獲取圖像字節流。");
+          }
+
+          imageUrl = `data:image/png;base64,${b64Bytes}`;
+        }
+
+        // 生成結束
+        clearInterval(progressInterval);
+        updateLoader(100, "圖像渲染完畢！");
+        document.getElementById("step-4").className = "flex items-center gap-2.5 text-xs text-slate-400";
+        document.getElementById("step-4").querySelector("i").className = "fa-solid fa-circle-check text-nvidia-500 text-[10px]";
+
+        // 更新結果卡片
+        const resultImg = document.getElementById("result-image");
+        resultImg.src = imageUrl;
+        document.getElementById("result-prompt").innerText = prompt;
+        
+        const engineBadge = document.getElementById("result-engine-badge");
+        if (currentEngine === "hf") {
+          engineBadge.innerText = "NVIDIA Cosmos 3";
+          engineBadge.className = "text-[9px] bg-nvidia-950 border border-nvidia-800 text-nvidia-400 px-2 py-0.5 rounded";
+        } else {
+          engineBadge.innerText = "Imagen 4.0 Demo";
+          engineBadge.className = "text-[9px] bg-indigo-950 border border-indigo-800 text-indigo-300 px-2 py-0.5 rounded";
+        }
+
+        setTimeout(() => {
+          loaderPanel.classList.add("hidden");
+          resultPanel.classList.remove("hidden");
+          
+          // 滑動到結果視窗
+          resultPanel.scrollIntoView({ behavior: 'smooth' });
+          
+          // 加入個人藝廊
+          addToGallery(imageUrl, prompt, currentEngine);
+          showToast("圖像物理渲染生成完成！", "success");
+        }, 600);
+
+      } catch (error) {
+        clearInterval(progressInterval);
+        loaderPanel.classList.add("hidden");
+        showToast(error.message || "發生未知錯誤，請檢察網路與 Token 配置。", "error");
+      } finally {
+        isGenerating = false;
+        document.getElementById("btn-generate").disabled = false;
+        document.getElementById("btn-generate").innerHTML = `<i class="fa-solid fa-wand-magic-sparkles text-base"></i><span>開始生成 Cosmos 3 畫像</span>`;
+      }
+    }
+
+    // 控制生圖進度條更新
+    function updateLoader(percent, text) {
+      document.getElementById("loader-percent").innerText = `${percent}%`;
+      document.getElementById("loader-bar").style.width = `${percent}%`;
+    }
+
+    // 將產出的圖像加入藝廊紀錄中
+    function addToGallery(imgUrl, promptStr, engineUsed) {
+      const item = {
+        id: Date.now(),
+        url: imgUrl,
+        prompt: promptStr,
+        engine: engineUsed === 'hf' ? 'Cosmos 3' : 'Imagen 4.0',
+        ratio: currentRatio,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      
+      // 置於陣列最前方
+      galleryItems.unshift(item);
+      renderGallery();
+    }
+
+    // 重新繪製藝廊
+    function renderGallery() {
+      const grid = document.getElementById("gallery-grid");
+      const emptyState = document.getElementById("gallery-empty");
+      const badge = document.getElementById("gallery-badge");
+
+      if (galleryItems.length === 0) {
+        grid.classList.add("hidden");
+        emptyState.classList.remove("hidden");
+        badge.classList.add("hidden");
+        return;
+      }
+
+      emptyState.classList.add("hidden");
+      grid.classList.remove("hidden");
+      
+      // 更新氣泡通知
+      badge.classList.remove("hidden");
+      badge.innerText = galleryItems.length;
+
+      grid.innerHTML = "";
+      galleryItems.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "bg-cardBg border border-slate-800 rounded-xl overflow-hidden shadow flex flex-col justify-between";
+        div.innerHTML = `
+          <div class="relative bg-slate-950 aspect-square overflow-hidden flex items-center justify-center">
+            <img src="${item.url}" alt="創作品" class="w-full h-full object-cover" />
+            <span class="absolute top-2 left-2 text-[8px] bg-darkBg/80 backdrop-blur text-slate-300 border border-slate-700 px-1.5 py-0.5 rounded">
+              ${item.ratio}
+            </span>
+            <span class="absolute bottom-2 right-2 text-[8px] bg-nvidia-950/90 text-nvidia-300 font-semibold px-1.5 py-0.5 rounded">
+              ${item.engine}
+            </span>
+          </div>
+          <div class="p-2.5 space-y-1.5 flex-1 flex flex-col justify-between">
+            <p class="text-[10px] text-slate-300 line-clamp-2 select-text font-normal leading-relaxed">${item.prompt}</p>
+            <div class="flex items-center justify-between text-[8px] text-slate-500 border-t border-slate-800/80 pt-1.5 mt-auto">
+              <span>${item.time}</span>
+              <div class="flex gap-2">
+                <button onclick="reusePrompt('${item.prompt.replace(/'/g, "\\'")}')" class="text-nvidia-400 hover:text-nvidia-300" title="重複使用提示詞">
+                  <i class="fa-solid fa-arrow-rotate-left"></i>
+                </button>
+                <button onclick="downloadDirectly('${item.url}')" class="text-slate-400 hover:text-white" title="儲存檔案">
+                  <i class="fa-solid fa-download"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+        grid.appendChild(div);
+      });
+    }
+
+    // 重用提示詞
+    function reusePrompt(promptStr) {
+      document.getElementById("prompt-textarea").value = promptStr;
+      updateCharCount();
+      switchTab('generator');
+      showToast("已將藝廊提示詞帶入輸入框！", "success");
+    }
+
+    // 清空藝廊
+    function clearAllGallery() {
+      if (galleryItems.length === 0) return;
+      galleryItems = [];
+      renderGallery();
+      showToast("藝廊紀錄已成功清空。", "info");
+    }
+
+    // 下載結果圖片 (支援 iframe 限制下的下載)
+    function downloadResult() {
+      const img = document.getElementById("result-image");
+      if (!img.src) return;
+      downloadDirectly(img.src);
+    }
+
+    function downloadDirectly(url) {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Cosmos3-Image-${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showToast("已開始下載，請檢查您的系統儲存檔案！", "success");
+    }
+
+    // 複製提示詞 (支援 Iframe 安全沙盒機制)
+    function copyGeneratedPrompt() {
+      const promptText = document.getElementById("result-prompt").innerText;
+      if (!promptText) return;
+      
+      const tempTextarea = document.createElement("textarea");
+      tempTextarea.value = promptText;
+      tempTextarea.style.position = "fixed";
+      tempTextarea.style.opacity = "0";
+      document.body.appendChild(tempTextarea);
+      tempTextarea.select();
+      
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+          showToast("完整提示詞複製成功！", "success");
+        } else {
+          showToast("複製失敗，請手動選擇複製。", "error");
+        }
+      } catch (err) {
+        showToast("裝置不支援快捷複製。", "error");
+      }
+      
+      document.body.removeChild(tempTextarea);
+    }
+  </script>
+</body>
+</html>
