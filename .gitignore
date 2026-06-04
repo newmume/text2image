@@ -1,3 +1,9 @@
 # Ignore other local files
 20260602_HW_V1.py
 20260602_HW_log.md
+
+# Ignore local configuration containing API keys
+config.json
+
+# Ignore generated images and metadata
+gallery/
