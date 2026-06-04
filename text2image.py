@@ -217,8 +217,8 @@ def main():
     <style>
         /* Dark cyber theme */
         .stApp {{
-            background-color: {DARK_BG};
-            color: #e2e8f0;
+            background-color: {DARK_BG} !important;
+            color: #e2e8f0 !important;
         }}
         .nvidia-logo {{
             display: flex;
@@ -226,7 +226,7 @@ def main():
             gap: 12px;
             margin-bottom: 25px;
             padding-bottom: 15px;
-            border-b: 1px solid #1e293b;
+            border-bottom: 1px solid #1e293b;
         }}
         .nvidia-cube {{
             width: 36px;
@@ -254,6 +254,82 @@ def main():
             letter-spacing: 2px;
             text-transform: uppercase;
         }}
+        
+        /* Expanders */
+        div[data-testid="stExpander"] {{
+            background-color: {CARD_BG} !important;
+            border: 1px solid #1e293b !important;
+            border-radius: 16px !important;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3) !important;
+        }}
+        
+        /* Bordered containers (custom cards) */
+        div[data-testid="stVerticalBlockBorderWrapper"] {{
+            background-color: {CARD_BG} !important;
+            border: 1px solid #1e293b !important;
+            border-radius: 16px !important;
+            padding: 20px !important;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3) !important;
+        }}
+        
+        /* Secondary (unselected) buttons */
+        button[data-testid="stBaseButton-secondary"] {{
+            background-color: {CARD_BG} !important;
+            border: 1px solid #1e293b !important;
+            color: #94a3b8 !important;
+            border-radius: 12px !important;
+            transition: all 0.3s ease !important;
+        }}
+        button[data-testid="stBaseButton-secondary"]:hover {{
+            border-color: {NVIDIA_GREEN} !important;
+            color: {NVIDIA_GREEN} !important;
+            background-color: rgba(118, 185, 0, 0.05) !important;
+            box-shadow: 0 0 10px rgba(118, 185, 0, 0.1) !important;
+        }}
+        
+        /* Primary (selected) buttons */
+        button[data-testid="stBaseButton-primary"] {{
+            background-color: rgba(118, 185, 0, 0.08) !important;
+            border: 1px solid {NVIDIA_GREEN} !important;
+            color: {NVIDIA_GREEN} !important;
+            border-radius: 12px !important;
+            box-shadow: 0 0 15px rgba(118, 185, 0, 0.3) !important;
+            font-weight: bold !important;
+            transition: all 0.3s ease !important;
+        }}
+        button[data-testid="stBaseButton-primary"]:hover {{
+            background-color: rgba(118, 185, 0, 0.15) !important;
+            box-shadow: 0 0 20px rgba(118, 185, 0, 0.5) !important;
+        }}
+        
+        /* Main generate button override */
+        .main-btn-wrapper button[data-testid="stBaseButton-primary"] {{
+            background: linear-gradient(90deg, {NVIDIA_GREEN} 0%, #10b981 100%) !important;
+            color: {DARK_BG} !important;
+            font-weight: 800 !important;
+            border: none !important;
+            box-shadow: 0 0 15px rgba(118, 185, 0, 0.4) !important;
+            border-radius: 16px !important;
+            height: 52px !important;
+        }}
+        .main-btn-wrapper button[data-testid="stBaseButton-primary"]:hover {{
+            background: linear-gradient(90deg, #83d151 0%, #34d399 100%) !important;
+            box-shadow: 0 0 25px rgba(118, 185, 0, 0.6) !important;
+        }}
+        
+        /* AI Upsampler button override */
+        .upsample-btn-wrapper button[data-testid="stBaseButton-secondary"] {{
+            background: linear-gradient(90deg, #7c3aed 0%, #4f46e5 100%) !important;
+            color: white !important;
+            font-weight: bold !important;
+            border: none !important;
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.4) !important;
+        }}
+        .upsample-btn-wrapper button[data-testid="stBaseButton-secondary"]:hover {{
+            background: linear-gradient(90deg, #8b5cf6 0%, #6366f1 100%) !important;
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.6) !important;
+        }}
+        
         /* Tab style overrides */
         .stTabs [data-baseweb="tab-list"] {{
             gap: 12px;
@@ -329,96 +405,102 @@ def main():
                 save_config(st.session_state.config)
             st.markdown("[👉 取得免費 Key](https://aistudio.google.com/)")
 
-        st.write("---")
+        st.write("")
 
-        # Prompt Input Area
-        prompt_input = st.text_area(
-            "輸入生成靈感 (中英文皆可)",
-            value=st.session_state.prompt,
-            height=120,
-            placeholder="例如：一個漫步在霓虹燈籠台北街頭的機械神龍，極致物理光澤、電影級光影..."
-        )
-        st.session_state.prompt = prompt_input
-        
-        # Character count
-        st.markdown(f"<div style='text-align: right; font-size: 11px; color: #64748b; margin-top: -10px; margin-bottom: 10px;'>{len(prompt_input)} / 500</div>", unsafe_allow_html=True)
+        # Prompt Input Area Card
+        with st.container(border=True):
+            prompt_input = st.text_area(
+                "輸入生成靈感 (中英文皆可)",
+                value=st.session_state.prompt,
+                height=120,
+                placeholder="例如：一個漫步在霓虹燈籠台北街頭的機械神龍，極致物理光澤、電影級光影..."
+            )
+            st.session_state.prompt = prompt_input
+            
+            # Character count
+            st.markdown(f"<div style='text-align: right; font-size: 11px; color: #64748b; margin-top: -10px; margin-bottom: 10px;'>{len(prompt_input)} / 500</div>", unsafe_allow_html=True)
 
-        col_opt, col_clr = st.columns([3, 1])
-        with col_opt:
-            if st.button("🪄 AI 提示詞大師最佳化", use_container_width=True):
-                if not prompt_input.strip():
-                    st.warning("請先輸入一點簡短的靈感，再讓 AI 大師進行最佳化！")
-                else:
-                    with st.spinner("AI 正在精密改寫提示詞..."):
-                        try:
-                            # Use custom key or env
-                            key_to_use = st.session_state.config.get("gemini_key", "")
-                            optimized = optimize_prompt(prompt_input, key_to_use)
-                            st.session_state.prompt = optimized
-                            st.success("AI 提示詞最佳化完成！已特別針對 Cosmos 3 優化物理和光影細節。")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"AI 優化失敗: {e}")
-        with col_clr:
-            if st.button("❌ 清除", use_container_width=True):
-                st.session_state.prompt = ""
-                st.rerun()
-
-        st.write("---")
-
-        # Aspect Ratio
-        st.markdown("**畫面比例 (Aspect Ratio)**")
-        ratio_cols = st.columns(3)
-        ratios = ["1:1", "16:9", "9:16"]
-        current_ratio = st.session_state.config.get("ratio", "1:1")
-        
-        for idx, r in enumerate(ratios):
-            with ratio_cols[idx]:
-                label = "🔳 1:1 正方形" if r == "1:1" else ("📺 16:9 寬螢幕" if r == "16:9" else "📱 9:16 直向海報")
-                is_selected = (r == current_ratio)
-                btn_label = f"🟢 {label}" if is_selected else label
-                if st.button(btn_label, key=f"btn_ratio_{r}", use_container_width=True):
-                    st.session_state.config["ratio"] = r
-                    save_config(st.session_state.config)
-                    st.rerun()
-
-        st.write("---")
-
-        # Style Presets
-        st.markdown("**藝術風格預設 (Style Presets)**")
-        style_cols = st.columns(3)
-        styles = [
-            {"id": "chinese", "emoji": "🏮", "name": "中國風", "suffix": ", traditional Chinese painting, ink wash style, elegant, dynasty core, detailed watercolor brushstrokes"},
-            {"id": "cute", "emoji": "🧸", "name": "可愛風", "suffix": ", ultra cute, chibi, pastel colors, 3D clay render, toy aesthetic, charming, soft lighting"},
-            {"id": "ghibli", "emoji": "🌳", "name": "吉卜力", "suffix": ", Studio Ghibli style, hand-drawn anime, lush green hills, soft nostalgic lighting, nostalgic anime aesthetic, masterpiece"},
-            {"id": "cyberpunk", "emoji": "🌌", "name": "賽博朋克", "suffix": ", cyberpunk, futuristic city, neon glow, high-tech, unreal engine 5, 8k"},
-            {"id": "realistic", "emoji": "📸", "name": "極致寫實", "suffix": ", photorealistic, hyperdetailed, 8k resolution, cinematic lighting, dslr camera, sharp focus"},
-            {"id": "anime", "emoji": "🎏", "name": "日系動漫", "suffix": ", anime illustration, beautiful hand-drawn art, vibrant colors, makoto shinkai style, high-res"},
-            {"id": "watercolor", "emoji": "🎨", "name": "極光水彩", "suffix": ", watercolor painting, artistic splatters, soft lighting, masterpiece, detailed texture"},
-            {"id": "physic-ai", "emoji": "🧬", "name": "3D 物理AI", "suffix": ", robotic physical simulation, precise physics, mechanical gears, metal textures, nvidia style, realistic raytracing"},
-            {"id": "empty", "emoji": "❌", "name": "無預設", "suffix": ""}
-        ]
-
-        for idx, s in enumerate(styles):
-            col_idx = idx % 3
-            with style_cols[col_idx]:
-                suffix = s["suffix"]
-                is_active = suffix != "" and suffix in st.session_state.prompt
-                if s["id"] == "empty":
-                    is_active = not any(style["suffix"] in st.session_state.prompt for style in styles if style["suffix"] != "")
-                    
-                btn_text = f"🟢 {s['emoji']} {s['name']}" if is_active else f"{s['emoji']} {s['name']}"
-                if st.button(btn_text, key=f"btn_style_{s['id']}", use_container_width=True):
-                    cleaned = clean_styles(st.session_state.prompt)
-                    if s["id"] != "empty":
-                        st.session_state.prompt = cleaned + suffix
+            col_opt, col_clr = st.columns([3, 1])
+            with col_opt:
+                st.markdown('<div class="upsample-btn-wrapper">', unsafe_allow_html=True)
+                if st.button("🪄 AI 提示詞大師最佳化", use_container_width=True):
+                    if not prompt_input.strip():
+                        st.warning("請先輸入一點簡短的靈感，再讓 AI 大師進行最佳化！")
                     else:
-                        st.session_state.prompt = cleaned
+                        with st.spinner("AI 正在精密改寫提示詞..."):
+                            try:
+                                key_to_use = st.session_state.config.get("gemini_key", "")
+                                optimized = optimize_prompt(prompt_input, key_to_use)
+                                st.session_state.prompt = optimized
+                                st.success("AI 提示詞最佳化完成！已特別針對 Cosmos 3 優化物理和光影細節。")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"AI 優化失敗: {e}")
+                st.markdown('</div>', unsafe_allow_html=True)
+            with col_clr:
+                if st.button("❌ 清除", use_container_width=True):
+                    st.session_state.prompt = ""
                     st.rerun()
 
-        st.write("---")
+        st.write("")
+
+        # Aspect Ratio Card
+        with st.container(border=True):
+            st.markdown("**畫面比例 (Aspect Ratio)**")
+            ratio_cols = st.columns(3)
+            ratios = ["1:1", "16:9", "9:16"]
+            current_ratio = st.session_state.config.get("ratio", "1:1")
+            
+            for idx, r in enumerate(ratios):
+                with ratio_cols[idx]:
+                    label = "🔳 1:1 正方形" if r == "1:1" else ("📺 16:9 寬螢幕" if r == "16:9" else "📱 9:16 直向海報")
+                    is_selected = (r == current_ratio)
+                    btn_type = "primary" if is_selected else "secondary"
+                    if st.button(label, key=f"btn_ratio_{r}", type=btn_type, use_container_width=True):
+                        st.session_state.config["ratio"] = r
+                        save_config(st.session_state.config)
+                        st.rerun()
+
+        st.write("")
+
+        # Style Presets Card
+        with st.container(border=True):
+            st.markdown("**藝術風格預設 (Style Presets)**")
+            style_cols = st.columns(3)
+            styles = [
+                {"id": "chinese", "emoji": "🏮", "name": "中國風", "suffix": ", traditional Chinese painting, ink wash style, elegant, dynasty core, detailed watercolor brushstrokes"},
+                {"id": "cute", "emoji": "🧸", "name": "可愛風", "suffix": ", ultra cute, chibi, pastel colors, 3D clay render, toy aesthetic, charming, soft lighting"},
+                {"id": "ghibli", "emoji": "🌳", "name": "吉卜力", "suffix": ", Studio Ghibli style, hand-drawn anime, lush green hills, soft nostalgic lighting, nostalgic anime aesthetic, masterpiece"},
+                {"id": "cyberpunk", "emoji": "🌌", "name": "賽博朋克", "suffix": ", cyberpunk, futuristic city, neon glow, high-tech, unreal engine 5, 8k"},
+                {"id": "realistic", "emoji": "📸", "name": "極致寫實", "suffix": ", photorealistic, hyperdetailed, 8k resolution, cinematic lighting, dslr camera, sharp focus"},
+                {"id": "anime", "emoji": "🎏", "name": "日系動漫", "suffix": ", anime illustration, beautiful hand-drawn art, vibrant colors, makoto shinkai style, high-res"},
+                {"id": "watercolor", "emoji": "🎨", "name": "極光水彩", "suffix": ", watercolor painting, artistic splatters, soft lighting, masterpiece, detailed texture"},
+                {"id": "physic-ai", "emoji": "🧬", "name": "3D 物理AI", "suffix": ", robotic physical simulation, precise physics, mechanical gears, metal textures, nvidia style, realistic raytracing"},
+                {"id": "empty", "emoji": "❌", "name": "無預設", "suffix": ""}
+            ]
+
+            for idx, s in enumerate(styles):
+                col_idx = idx % 3
+                with style_cols[col_idx]:
+                    suffix = s["suffix"]
+                    is_active = suffix != "" and suffix in st.session_state.prompt
+                    if s["id"] == "empty":
+                        is_active = not any(style["suffix"] in st.session_state.prompt for style in styles if style["suffix"] != "")
+                        
+                    btn_text = f"{s['emoji']} {s['name']}"
+                    btn_type = "primary" if is_active else "secondary"
+                    if st.button(btn_text, key=f"btn_style_{s['id']}", type=btn_type, use_container_width=True):
+                        cleaned = clean_styles(st.session_state.prompt)
+                        if s["id"] != "empty":
+                            st.session_state.prompt = cleaned + suffix
+                        else:
+                            st.session_state.prompt = cleaned
+                        st.rerun()
+
+        st.write("")
 
         # Generate Button
+        st.markdown('<div class="main-btn-wrapper">', unsafe_allow_html=True)
         if st.button("🚀 開始生成 Cosmos 3 畫像", use_container_width=True, type="primary"):
             if not st.session_state.prompt.strip():
                 st.warning("請輸入生圖提示詞 (Prompt)！")
@@ -512,6 +594,7 @@ def main():
                     step3.empty()
                     step4.empty()
                     st.error(f"生成失敗: {e}")
+        st.markdown('</div>', unsafe_allow_html=True)
 
     # ================= TAB 2: GALLERY =================
     with tab_gallery:
