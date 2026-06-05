@@ -1,9 +1,12 @@
-# Ignore other local files
-20260602_HW_V1.py
-20260602_HW_log.md
-
-# Ignore local configuration containing API keys
+# Ignore config and keys
 config.json
 
-# Ignore generated images and metadata
+# Ignore local generated images
 gallery/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Local streamlit configs
+.streamlit/

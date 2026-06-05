@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AI Studio Multi-Model Text2Image</title>
+  
+  <!-- 導入 Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- 導入 Google 字體 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome 圖標 -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            nvidia: {
+              50: '#f4fbf0',
+              100: '#e5f7da',
+              200: '#ceefb6',
+              300: '#ace385',
+              400: '#83d151',
+              500: '#76B900', // NVIDIA 經典綠
+              600: '#4a8500',
+              700: '#386500',
+              800: '#2e5105',
+              900: '#274509',
+              950: '#112202',
+            },
+            darkBg: '#090D16',
+            cardBg: '#131926'
+          },
+          boxShadow: {
+            glow: '0 0 15px rgba(118, 185, 0, 0.4)',
+            glowPurple: '0 0 15px rgba(139, 92, 246, 0.4)',
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- 外部樣式表 -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="text-slate-100 font-sans antialiased min-h-screen flex flex-col pb-20 select-none">
+
+  <!-- 頂部導航列 -->
+  <header class="sticky top-0 z-40 bg-darkBg/80 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <!-- 仿 NVIDIA 經典綠色 Logo 標誌 -->
+      <div class="w-7 h-7 bg-nvidia-500 rounded-lg flex items-center justify-center shadow-glow animate-pulse">
+        <i class="fa-solid fa-cube text-darkBg text-sm font-bold"></i>
+      </div>
+      <div>
+        <h1 class="text-sm font-bold tracking-wider text-white">AI STUDIO</h1>
+        <p class="text-[10px] text-nvidia-400 font-semibold tracking-widest uppercase">Multi-Model Generator</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <span class="bg-slate-800/80 border border-slate-700 text-slate-300 text-[10px] px-2.5 py-1 rounded-full font-medium flex items-center gap-1">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+        v3.5 Multi
+      </span>
+    </div>
+  </header>
+
+  <!-- 主內容容器 -->
+  <main class="flex-1 max-w-md mx-auto w-full px-4 pt-4 pb-6 overflow-y-auto">
+    
+    <!-- ================= 頁面一：生成器 ================= -->
+    <section id="view-generator" class="space-y-5">
+      
+      <!-- 模式與金鑰設定折疊面板 -->
+      <div class="bg-cardBg border border-slate-800 rounded-2xl overflow-hidden transition-all duration-300 shadow-lg">
+        <button onclick="toggleSettings()" class="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-800/30 transition-colors">
+          <div class="flex items-center gap-2.5 text-left">
+            <div class="w-8 h-8 rounded-lg bg-nvidia-500/10 flex items-center justify-center text-nvidia-400">
+              <i class="fa-solid fa-sliders text-sm"></i>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-slate-200">生成引擎與模型設定</p>
+              <p id="current-mode-badge" class="text-[10px] text-slate-400">正在讀取模型設定...</p>
+            </div>
+          </div>
+          <i id="settings-chevron" class="fa-solid fa-chevron-down text-slate-500 text-xs transition-transform duration-300"></i>
+        </button>
+        
+        <div id="settings-content" class="hidden border-t border-slate-800/60 p-4 space-y-4 bg-slate-900/40">
+          
+          <!-- 模型切換下拉選單 -->
+          <div class="space-y-2">
+            <label class="block text-xs font-semibold text-slate-400">選擇生成模型 (Model Dropdown)</label>
+            <div class="relative">
+              <select id="model-select" onchange="handleModelChange()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-3 text-xs text-white focus:outline-none focus:border-nvidia-500 focus:ring-1 focus:ring-nvidia-500 appearance-none cursor-pointer">
+                <optgroup label="Google Imagen (免 Key 預設體驗/自訂 Key)" class="bg-slate-900 text-slate-300">
+                  <option value="imagen-4.0-generate-001" selected>Google Imagen 4.0 Generate (預設體驗)</option>
+                  <option value="imagen-3.0-generate-002">Google Imagen 3.0 Generate (自訂 Key)</option>
+                  <option value="imagen-3.0-fast-generate-002">Google Imagen 3.0 Fast Generate (自訂 Key)</option>
+                </optgroup>
+                <optgroup label="Hugging Face (需要 HF Read Token)" class="bg-slate-900 text-slate-300">
+                  <option value="nvidia/Cosmos3-Super-Text2Image">NVIDIA Cosmos 3 (Cosmos3-Super-Text2Image)</option>
+                  <option value="black-forest-labs/FLUX.1-schnell">FLUX.1 Schnell</option>
+                  <option value="black-forest-labs/FLUX.1-dev">FLUX.1 Dev</option>
+                  <option value="stabilityai/stable-diffusion-3.5-large">Stable Diffusion 3.5 Large</option>
+                  <option value="stabilityai/stable-diffusion-xl-base-1.0">Stable Diffusion XL 1.0</option>
+                </optgroup>
+              </select>
+              <div class="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                <i class="fa-solid fa-chevron-down text-xs"></i>
+              </div>
+            </div>
+          </div>
+
+          <!-- HF Token 輸入框 (僅在選擇 HF 時提示) -->
+          <div id="hf-token-wrapper" class="hidden space-y-3">
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <label class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                  <i class="fa-solid fa-key text-yellow-500"></i> Hugging Face Read Token
+                </label>
+                <a href="https://huggingface.co/settings/tokens" target="_blank" class="text-[10px] text-nvidia-400 hover:underline">
+                  如何獲取 Token？ <i class="fa-solid fa-arrow-up-right-from-square text-[8px]"></i>
+                </a>
+              </div>
+              <div class="relative">
+                <input type="password" id="hf-token-input" placeholder="hf_..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-nvidia-500 focus:ring-1 focus:ring-nvidia-500" />
+                <button onclick="toggleTokenVisibility()" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                  <i id="token-eye-icon" class="fa-solid fa-eye text-xs"></i>
+                </button>
+              </div>
+              <p class="text-[10px] text-slate-500">
+                * 此 Token 將安全地儲存於本機瀏覽器（Local Storage）。
+              </p>
+            </div>
+          </div>
+
+          <!-- Gemini API Key 輸入區 (備用金鑰) -->
+          <div class="space-y-2 pt-3 border-t border-slate-800/60">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-key text-sky-400"></i> 自訂 Gemini API Key (選填)
+              </label>
+              <a href="https://aistudio.google.com/" target="_blank" class="text-[10px] text-sky-400 hover:underline">
+                取得免費 Key <i class="fa-solid fa-arrow-up-right-from-square text-[8px]"></i>
+              </a>
+            </div>
+            <div class="relative">
+              <input type="password" id="gemini-key-input" placeholder="AIzaSy... (選填，若連線失敗時使用)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-nvidia-500 focus:ring-1 focus:ring-nvidia-500" />
+              <button onclick="toggleGeminiKeyVisibility()" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+                <i id="gemini-key-eye-icon" class="fa-solid fa-eye text-xs"></i>
+              </button>
+            </div>
+            <p class="text-[10px] text-slate-500">
+              * 預設使用系統內建金鑰。若提示詞改寫（Gemini）回報連線失敗，建議貼上您自訂的免費金鑰以確保順暢體驗。
+            </p>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- 提示詞輸入區 -->
+      <div class="bg-cardBg border border-slate-800 rounded-2xl p-4 shadow-lg space-y-3.5">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-300 tracking-wide flex items-center gap-1.5">
+            <i class="fa-solid fa-pen-nib text-nvidia-400"></i> 輸入生成靈感 (中英文皆可)
+          </span>
+          <span id="prompt-char-count" class="text-[10px] text-slate-500">0 / 500</span>
+        </div>
+        
+        <div class="relative">
+          <textarea id="prompt-textarea" oninput="updateCharCount()" rows="4" placeholder="例如：一個漫步在霓虹燈籠台北街頭的機械神龍，極致物理光澤、電影級光影..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-nvidia-500 focus:ring-1 focus:ring-nvidia-500 resize-none leading-relaxed"></textarea>
+          
+          <!-- 清除按鈕 -->
+          <button onclick="clearPrompt()" class="absolute right-3.5 bottom-3.5 w-6 h-6 bg-slate-800/80 hover:bg-slate-700/80 text-slate-400 hover:text-slate-200 rounded-full flex items-center justify-center transition-colors">
+            <i class="fa-solid fa-xmark text-xs"></i>
+          </button>
+        </div>
+
+        <!-- 快捷優化按鈕 -->
+        <div class="flex gap-2">
+          <button onclick="handlePromptUpsample()" id="btn-upsample" class="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 shadow-glowPurple hover:scale-[1.01] active:scale-[0.99] transition-all">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            <span>AI 提示詞大師最佳化</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 畫面比例選擇 -->
+      <div class="space-y-2">
+        <label class="text-xs font-bold text-slate-300 tracking-wide block flex items-center gap-1.5 px-1">
+          <i class="fa-solid fa-crop-simple text-nvidia-400"></i> 畫面比例 (Aspect Ratio)
+        </label>
+        <div class="grid grid-cols-3 gap-2.5">
+          <button onclick="selectRatio('1:1')" id="ratio-1-1" class="ratio-btn border border-nvidia-500 bg-nvidia-500/10 text-nvidia-400 py-3 rounded-xl flex flex-col items-center justify-center transition-all">
+            <div class="w-5 h-5 border-2 border-current rounded mb-1"></div>
+            <span class="text-[10px] font-bold">1:1 正方形</span>
+          </button>
+          <button onclick="selectRatio('16:9')" id="ratio-16-9" class="ratio-btn border border-slate-800 bg-slate-900 text-slate-400 py-3 rounded-xl flex flex-col items-center justify-center transition-all">
+            <div class="w-7 h-4 border-2 border-current rounded mb-1.5"></div>
+            <span class="text-[10px] font-bold">16:9 寬螢幕</span>
+          </button>
+          <button onclick="selectRatio('9:16')" id="ratio-9-16" class="ratio-btn border border-slate-800 bg-slate-900 text-slate-400 py-3 rounded-xl flex flex-col items-center justify-center transition-all">
+            <div class="w-4 h-7 border-2 border-current rounded mb-0.5"></div>
+            <span class="text-[10px] font-bold">9:16 直向海報</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 藝術風格預設 -->
+      <div class="space-y-2">
+        <label class="text-xs font-bold text-slate-300 tracking-wide block flex items-center gap-1.5 px-1">
+          <i class="fa-solid fa-palette text-nvidia-400"></i> 藝術風格預設 (Style Presets)
+        </label>
+        <div class="grid grid-cols-3 gap-2">
+          <!-- 新置頂三大熱門風格按鈕 -->
+          <button onclick="applyStyle('chinese', this)" class="style-btn bg-cardBg border border-slate-800 hover:border-slate-700 p-2.5 rounded-xl text-center active:scale-95 transition-all text-slate-300">
+            <span class="block text-base mb-0.5">🏮</span>
+            <span class="text-[10px] font-semibold block">中國風</span>
+          </button>
+          <button onclick="applyStyle('cute', this)" class="style-btn bg-cardBg border border-slate-800 hover:border-slate-700 p-2.5 rounded-xl text-center active:scale-95 transition-all text-slate-300">
+            <span class="block text-base mb-0.5">🧸</span>
+            <span class="text-[10px] font-semibold block">可愛風</span>
+          </button>
+          <button onclick="applyStyle('ghibli', this)" class="style-btn bg-cardBg border border-slate-800 hover:border-slate-700 p-2.5 rounded-xl text-center active:scale-95 transition-all text-slate-300">
+            <span class="block text-base mb-0.5">🌳</span>
+            <span class="text-[10px] font-semibold block">吉卜力</span>
+          </button>
+          
+          <!-- 經典藝術風格 -->
+          <button onclick="applyStyle('cyberpunk', this)" class="style-btn bg-cardBg border border-slate-800 hover:border-slate-700 p-2.5 rounded-xl text-center active:scale-95 transition-all text-slate-300">
+            <span class="block text-base mb-0.5">🌌</span>
+            <span class="text-[10px] font-semibold block">賽博朋克</span>
+          </button>
+          <button onclick="applyStyle('realistic', this)" class="style-btn bg-cardBg border border-slate-800 hover:border-slate-700 p-2.5 rounded-xl text-center active:scale-95 transition-all text-slate-300">
+            <span class="block text-base mb-0.5">📸</span>
+            <span class="text-[10px] font-semibold block">極致寫實</span>
+          </button>
+          <button onclick="applyStyle('anime', this)" class="style-btn bg-cardBg border border-slate-800 hover:border-slate-700 p-2.5 rounded-xl text-center active:scale-95 transition-all text-slate-300">
+            <span class="block text-base mb-0.5">🎏</span>
+            <span class="text-[10px] font-semibold block">日系動漫</span>
+          </button>
+          <button onclick="applyStyle('watercolor', this)" class="style-btn bg-cardBg border border-slate-800 hover:border-slate-700 p-2.5 rounded-xl text-center active:scale-95 transition-all text-slate-300">
+            <span class="block text-base mb-0.5">🎨</span>
+            <span class="text-[10px] font-semibold block">極光水彩</span>
+          </button>
+          <button onclick="applyStyle('physic-ai', this)" class="style-btn bg-cardBg border border-slate-800 hover:border-slate-700 p-2.5 rounded-xl text-center active:scale-95 transition-all text-slate-300">
+            <span class="block text-base mb-0.5">🧬</span>
+            <span class="text-[10px] font-semibold block">3D 物理AI</span>
+          </button>
+          <button onclick="applyStyle('empty', this)" class="style-btn bg-slate-900 border border-slate-800 p-2.5 rounded-xl text-center active:scale-95 transition-all text-slate-500">
+            <span class="block text-base mb-0.5">❌</span>
+            <span class="text-[10px] font-semibold block">無預設</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 生成主按鈕 -->
+      <button onclick="triggerGenerate()" id="btn-generate" class="w-full bg-gradient-to-r from-nvidia-500 to-emerald-500 hover:from-nvidia-400 hover:to-emerald-400 text-darkBg text-sm font-bold py-4 px-4 rounded-2xl flex items-center justify-center gap-2.5 shadow-glow hover:scale-[1.01] active:scale-[0.98] transition-all">
+        <i class="fa-solid fa-wand-magic-sparkles text-base"></i>
+        <span>開始進行 AI 畫像生成</span>
+      </button>
+
+      <!-- 生圖狀態加載面板 (動態進度展示) -->
+      <div id="loader-panel" class="hidden bg-cardBg border border-slate-800 rounded-2xl p-5 space-y-4 shadow-lg">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-200">AI 生成中...</span>
+          <span id="loader-percent" class="text-xs font-bold text-nvidia-400">10%</span>
+        </div>
+        <!-- 進度條 -->
+        <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
+          <div id="loader-bar" class="bg-gradient-to-r from-nvidia-500 to-emerald-400 h-full w-[10%] transition-all duration-500"></div>
+        </div>
+        <!-- 進度詳細步驟 -->
+        <div class="space-y-2">
+          <div id="step-1" class="flex items-center gap-2.5 text-xs text-slate-300">
+            <i class="fa-solid fa-spinner animate-spin text-nvidia-400 text-[10px]"></i>
+            <span>正在建立安全連接與 API 驗證...</span>
+          </div>
+          <div id="step-2" class="flex items-center gap-2.5 text-xs text-slate-500">
+            <i class="fa-solid fa-circle-dot text-[8px]"></i>
+            <span>分發模型權重與去噪張量計算...</span>
+          </div>
+          <div id="step-3" class="flex items-center gap-2.5 text-xs text-slate-500">
+            <i class="fa-solid fa-circle-dot text-[8px]"></i>
+            <span>高解析度去噪擴散演算進行中...</span>
+          </div>
+          <div id="step-4" class="flex items-center gap-2.5 text-xs text-slate-500">
+            <i class="fa-solid fa-circle-dot text-[8px]"></i>
+            <span>解碼潜在空間並合成最終像素。</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 生成結果顯示卡 -->
+      <div id="result-panel" class="hidden bg-cardBg border border-slate-800 rounded-2xl overflow-hidden shadow-lg space-y-4 p-4">
+        <div class="flex items-center justify-between px-1">
+          <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+            <i class="fa-regular fa-image text-nvidia-400"></i> 生成結果
+          </span>
+          <span id="result-engine-badge" class="text-[9px] bg-nvidia-950 border border-nvidia-800 text-nvidia-400 px-2 py-0.5 rounded">Engine</span>
+        </div>
+        
+        <!-- 圖像容器 -->
+        <div class="relative bg-slate-950 rounded-xl overflow-hidden group">
+          <img id="result-image" src="" alt="生成圖像" class="w-full h-auto max-h-[420px] object-contain mx-auto" />
+          
+          <!-- 水印 -->
+          <div class="absolute bottom-2.5 right-2.5 bg-darkBg/70 backdrop-blur border border-slate-800 text-[9px] font-bold tracking-wider text-nvidia-400 px-2 py-1 rounded">
+            AI STUDIO PREMIUM
+          </div>
+        </div>
+
+        <!-- 操控動作按鈕 -->
+        <div class="grid grid-cols-2 gap-2.5 pt-1">
+          <button onclick="downloadResult()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-3 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all">
+            <i class="fa-solid fa-download"></i>
+            <span>儲存到本機</span>
+          </button>
+          <button onclick="copyGeneratedPrompt()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-3 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all">
+            <i class="fa-regular fa-copy"></i>
+            <span>複製完整提示詞</span>
+          </button>
+        </div>
+
+        <!-- 生成詳情折疊面板 -->
+        <div class="bg-slate-900/50 rounded-xl p-3 border border-slate-800/60">
+          <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">使用的提示詞</p>
+          <p id="result-prompt" class="text-xs text-slate-300 leading-relaxed line-clamp-3 select-text"></p>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ================= 頁面二：作品藝廊 ================= -->
+    <section id="view-gallery" class="hidden space-y-4">
+      <div class="flex items-center justify-between px-1">
+        <div>
+          <h2 class="text-base font-bold text-white">我的創作品藝廊</h2>
+          <p class="text-[10px] text-slate-400">目前記錄保存在本次瀏覽階段中</p>
+        </div>
+        <button onclick="clearAllGallery()" class="text-slate-500 hover:text-red-400 text-xs flex items-center gap-1.5 py-1 px-2.5 rounded-lg hover:bg-slate-900 transition-colors">
+          <i class="fa-regular fa-trash-can"></i>
+          清空
+        </button>
+      </div>
+
+      <!-- 空白狀態 -->
+      <div id="gallery-empty" class="bg-cardBg border border-slate-800 rounded-2xl p-10 text-center space-y-3">
+        <div class="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center mx-auto text-slate-600">
+          <i class="fa-regular fa-images text-2xl"></i>
+        </div>
+        <p class="text-xs text-slate-300 font-medium">還沒有任何生成紀錄</p>
+        <p class="text-[10px] text-slate-500 max-w-xs mx-auto">立即前往生成器輸入您的靈感，AI 將賦予其絕美的視覺物理真實感！</p>
+        <button onclick="switchTab('generator')" class="mt-2 bg-nvidia-500/10 hover:bg-nvidia-500/20 text-nvidia-400 border border-nvidia-500/30 text-xs font-bold py-2 px-4 rounded-xl transition-all">
+          開始第一張創作
+        </button>
+      </div>
+
+      <!-- 藝廊網格 -->
+      <div id="gallery-grid" class="grid grid-cols-2 gap-3.5 hidden">
+        <!-- 藝廊項目卡片將經由 JS 動態生成 -->
+      </div>
+    </section>
+
+    <!-- ================= 頁面三：模型指南 ================= -->
+    <section id="view-info" class="hidden space-y-5">
+      <div class="text-center py-3">
+        <div class="inline-block w-12 h-12 rounded-full bg-nvidia-500/10 text-nvidia-400 flex items-center justify-center text-xl mb-2.5">
+          <i class="fa-solid fa-graduation-cap"></i>
+        </div>
+        <h2 class="text-base font-bold text-white">AI Studio 模型使用指南</h2>
+        <p class="text-[10px] text-slate-400">快速了解並串接世界級生圖 API</p>
+      </div>
+
+      <!-- 技術亮點卡片 -->
+      <div class="bg-cardBg border border-slate-800 rounded-2xl p-4 space-y-3 shadow-lg">
+        <h3 class="text-xs font-bold text-nvidia-400 tracking-wider uppercase flex items-center gap-1.5">
+          <i class="fa-solid fa-microchip"></i> 多模型架構支援
+        </h3>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          本測試頁面支援多款業界頂尖模型，包含 <strong>NVIDIA Cosmos 3</strong>、<strong>FLUX.1 Schnell/Dev</strong>、以及 <strong>Stable Diffusion 3.5/XL</strong> 等熱門開源模型。
+        </p>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          Google DeepMind 的 <strong>Imagen 4.0 Pro</strong> 亦被整合其中，可直接調用獲取高品質圖像。
+        </p>
+      </div>
+
+      <!-- 快速上手指南 -->
+      <div class="bg-cardBg border border-slate-800 rounded-2xl p-4 space-y-3.5 shadow-lg">
+        <h3 class="text-xs font-bold text-indigo-400 tracking-wider uppercase flex items-center gap-1.5">
+          <i class="fa-solid fa-rocket"></i> API Key 設定流程
+        </h3>
+        
+        <div class="space-y-3">
+          <div class="flex gap-3">
+            <span class="w-5 h-5 bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 font-bold rounded-full flex items-center justify-center text-[10px] shrink-0 mt-0.5">1</span>
+            <div>
+              <p class="text-xs font-bold text-slate-200">取得金鑰</p>
+              <p class="text-[10px] text-slate-400">若是 Hugging Face 模型，請至 huggingface.co 獲取 Access Token；若是 Google Imagen，可至 AI Studio 獲取 API Key。</p>
+            </div>
+          </div>
+          
+          <div class="flex gap-3">
+            <span class="w-5 h-5 bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 font-bold rounded-full flex items-center justify-center text-[10px] shrink-0 mt-0.5">2</span>
+            <div>
+              <p class="text-xs font-bold text-slate-200">下拉選擇模型</p>
+              <p class="text-[10px] text-slate-400">於設定選單中切換您的生成模型，輸入對應的金鑰。</p>
+            </div>
+          </div>
+
+          <div class="flex gap-3">
+            <span class="w-5 h-5 bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 font-bold rounded-full flex items-center justify-center text-[10px] shrink-0 mt-0.5">3</span>
+            <div>
+              <p class="text-xs font-bold text-slate-200">輸入提示詞並生成</p>
+              <p class="text-[10px] text-slate-400">點擊主生成按鈕，程式將直接從瀏覽器端呼叫 API 完成生圖。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 全局 Toast 提示訊息 -->
+  <div id="toast-box" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 border border-slate-800 text-xs font-medium px-4 py-3 rounded-xl shadow-lg flex items-center gap-2.5 opacity-0 pointer-events-none transform -translate-y-2 transition-all duration-300">
+    <i id="toast-icon" class="fa-solid fa-circle-info text-nvidia-400"></i>
+    <span id="toast-text" class="text-slate-200">提示內容</span>
+  </div>
+
+  <!-- 手機版底部導航欄 -->
+  <nav class="fixed bottom-0 left-0 right-0 z-40 bg-darkBg/95 backdrop-blur-md border-t border-slate-800/80 px-6 py-2.5 flex items-center justify-between max-w-md mx-auto">
+    <!-- 生成器頁籤 -->
+    <button onclick="switchTab('generator')" id="nav-generator" class="flex flex-col items-center gap-1 text-nvidia-400 transition-colors py-1 px-3">
+      <i class="fa-solid fa-wand-magic-sparkles text-lg"></i>
+      <span class="text-[9px] font-bold">生成創作</span>
+    </button>
+    
+    <!-- 作品藝廊頁籤 -->
+    <button onclick="switchTab('gallery')" id="nav-gallery" class="flex flex-col items-center gap-1 text-slate-500 hover:text-slate-300 transition-colors py-1 px-3">
+      <div class="relative">
+        <i class="fa-regular fa-images text-lg"></i>
+        <span id="gallery-badge" class="absolute -top-1.5 -right-2 bg-nvidia-500 text-darkBg text-[8px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center hidden">0</span>
+      </div>
+      <span class="text-[9px] font-bold">作品藝廊</span>
+    </button>
+    
+    <!-- 模型資訊頁籤 -->
+    <button onclick="switchTab('info')" id="nav-info" class="flex flex-col items-center gap-1 text-slate-500 hover:text-slate-300 transition-colors py-1 px-3">
+      <i class="fa-solid fa-circle-info text-lg"></i>
+      <span class="text-[9px] font-bold">模型指南</span>
+    </button>
+  </nav>
+
+  <!-- 外部腳本 -->
+  <script src="script.js"></script>
+</body>
+</html>

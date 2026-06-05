@@ -13,10 +13,56 @@ DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(DIRECTORY, "config.json")
 GALLERY_DIR = os.path.join(DIRECTORY, "gallery")
 
-# NVIDIA styling variables
+# NVIDIA/AI styling variables
 NVIDIA_GREEN = "#76B900"
 DARK_BG = "#090D16"
 CARD_BG = "#131926"
+
+# Supported Model Definitions
+MODELS = {
+    # Gemini models
+    "imagen-4.0-generate-001": {
+        "name": "Google Imagen 4.0 Generate (預設體驗/自訂 Key)",
+        "provider": "gemini",
+        "api_name": "imagen-4.0-generate-001"
+    },
+    "imagen-3.0-generate-002": {
+        "name": "Google Imagen 3.0 Generate (自訂 Key)",
+        "provider": "gemini",
+        "api_name": "imagen-3.0-generate-002"
+    },
+    "imagen-3.0-fast-generate-002": {
+        "name": "Google Imagen 3.0 Fast Generate (自訂 Key)",
+        "provider": "gemini",
+        "api_name": "imagen-3.0-fast-generate-002"
+    },
+    # Hugging Face models
+    "nvidia/Cosmos3-Super-Text2Image": {
+        "name": "NVIDIA Cosmos 3 (HF: nvidia/Cosmos3-Super-Text2Image)",
+        "provider": "hf",
+        "api_name": "nvidia/Cosmos3-Super-Text2Image"
+    },
+    "black-forest-labs/FLUX.1-schnell": {
+        "name": "FLUX.1 Schnell (HF: black-forest-labs/FLUX.1-schnell)",
+        "provider": "hf",
+        "api_name": "black-forest-labs/FLUX.1-schnell"
+    },
+    "black-forest-labs/FLUX.1-dev": {
+        "name": "FLUX.1 Dev (HF: black-forest-labs/FLUX.1-dev)",
+        "provider": "hf",
+        "api_name": "black-forest-labs/FLUX.1-dev"
+    },
+    "stabilityai/stable-diffusion-3.5-large": {
+        "name": "Stable Diffusion 3.5 Large (HF: stabilityai/stable-diffusion-3.5-large)",
+        "provider": "hf",
+        "api_name": "stabilityai/stable-diffusion-3.5-large"
+    },
+    "stabilityai/stable-diffusion-xl-base-1.0": {
+        "name": "Stable Diffusion XL 1.0 (HF: stabilityai/stable-diffusion-xl-base-1.0)",
+        "provider": "hf",
+        "api_name": "stabilityai/stable-diffusion-xl-base-1.0"
+    }
+}
 
 def is_running_in_streamlit():
     """Helper to check if code is running inside Streamlit."""
@@ -31,10 +77,23 @@ def load_config():
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                config = json.load(f)
+                # Check for legacy engine settings to keep compatibility
+                if "model" not in config:
+                    if config.get("engine") == "hf":
+                        config["model"] = "nvidia/Cosmos3-Super-Text2Image"
+                    else:
+                        config["model"] = "imagen-4.0-generate-001"
+                return config
         except Exception:
             pass
-    return {"hf_token": "", "gemini_key": "", "engine": "gemini", "ratio": "1:1"}
+    return {
+        "hf_token": "", 
+        "gemini_key": "", 
+        "engine": "gemini", 
+        "model": "imagen-4.0-generate-001",
+        "ratio": "1:1"
+    }
 
 def save_config(config):
     try:
@@ -45,7 +104,7 @@ def save_config(config):
         pass
 
 # Image Gallery File Storage
-def save_image_to_gallery(image_bytes, prompt, engine, ratio):
+def save_image_to_gallery(image_bytes, prompt, model_name, ratio):
     os.makedirs(GALLERY_DIR, exist_ok=True)
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"{timestamp}.png"
@@ -57,10 +116,13 @@ def save_image_to_gallery(image_bytes, prompt, engine, ratio):
     meta_filename = f"{timestamp}.json"
     meta_filepath = os.path.join(GALLERY_DIR, meta_filename)
     
+    model_info = MODELS.get(model_name, {"name": model_name})
+    
     metadata = {
         "timestamp": timestamp,
         "prompt": prompt,
-        "engine": "NVIDIA Cosmos 3" if engine == "hf" else "Imagen 4.0 Demo",
+        "model": model_name,
+        "engine": model_info["name"].split(" (")[0],
         "ratio": ratio,
         "image_file": filename,
         "time_str": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -106,7 +168,7 @@ def optimize_prompt(prompt, user_key):
         }],
         "systemInstruction": {
             "parts": [{
-                "text": "You are an expert prompt engineer for the NVIDIA Cosmos 3 (Cosmos3-Super-Text2Image) physical simulation and image diffusion model. Rewrite and significantly expand the user prompt into a highly detailed, visually stunning, and physically realistic English prompt. Ensure you describe the camera perspective, realistic physical properties, textures, materials, lighting details, and background setup to leverage the full 64B parameter physical modeling capability of Cosmos 3. Do not include introductory words or titles. Do not output markdown, just output the raw prompt in English."
+                "text": "You are an expert prompt engineer for advanced physical simulation and image diffusion models. Rewrite and significantly expand the user prompt into a highly detailed, visually stunning, and physically realistic English prompt. Describe the camera perspective, realistic physical properties, textures, materials, lighting details, and background setup to leverage the full parameter capability of the selected model. Do not include introductory words or titles. Do not output markdown, just output the raw prompt in English."
             }]
         }
     }
@@ -126,8 +188,8 @@ def optimize_prompt(prompt, user_key):
     except (KeyError, IndexError):
         raise Exception("未能成功解析 Gemini API 回傳內容。")
 
-def generate_image_hf(prompt, token, width, height):
-    hf_url = "https://api-inference.huggingface.co/models/nvidia/Cosmos3-Super-Text2Image"
+def generate_image_hf(prompt, token, model_name, width, height):
+    hf_url = f"https://api-inference.huggingface.co/models/{model_name}"
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
@@ -166,8 +228,8 @@ def generate_image_hf(prompt, token, width, height):
             
     raise Exception("Hugging Face 模型啟動超時，請稍候重試。")
 
-def generate_image_gemini(prompt, api_key, ratio):
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key={api_key}"
+def generate_image_gemini(prompt, api_key, model_name, ratio):
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:predict?key={api_key}"
     payload = {
         "instances": [
             { "prompt": prompt }
@@ -199,7 +261,7 @@ def main():
     
     # 1. Page Config
     st.set_page_config(
-        page_title="Cosmos 3 Super Text2Image AI",
+        page_title="AI Text2Image Multi-Model Studio",
         page_icon="🔮",
         layout="centered",
         initial_sidebar_state="collapsed"
@@ -357,8 +419,8 @@ def main():
             🔮
         </div>
         <div>
-            <div class="nvidia-title-text">COSMOS 3</div>
-            <div class="nvidia-subtitle-text">Physical AI Generator</div>
+            <div class="nvidia-title-text">AI STUDIO</div>
+            <div class="nvidia-subtitle-text">Multi-Model Studio v3.5</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -369,19 +431,34 @@ def main():
     # ================= TAB 1: GENERATOR =================
     with tab_generator:
         # Settings Expander
-        with st.expander("⚙️ 生成引擎設定", expanded=False):
-            engine_choice = st.radio(
-                "選擇運行模型",
-                ["免密鑰體驗引擎 (Imagen 4.0 Demo)", "NVIDIA Cosmos 3 (Hugging Face API)"],
-                index=0 if st.session_state.config["engine"] == "gemini" else 1
+        with st.expander("⚙️ 生成引擎與模型設定", expanded=True):
+            # Model Selection Dropdown
+            model_keys = list(MODELS.keys())
+            model_display_names = [MODELS[k]["name"] for k in model_keys]
+            
+            saved_model = st.session_state.config.get("model", "imagen-4.0-generate-001")
+            if saved_model not in MODELS:
+                saved_model = "imagen-4.0-generate-001"
+            default_index = model_keys.index(saved_model)
+            
+            selected_display_name = st.selectbox(
+                "選擇生成模型 (Model Dropdown)",
+                options=model_display_names,
+                index=default_index
             )
-            current_engine = "gemini" if engine_choice.startswith("免密鑰") else "hf"
-            if current_engine != st.session_state.config["engine"]:
+            
+            current_model = [k for k, v in MODELS.items() if v["name"] == selected_display_name][0]
+            current_engine = MODELS[current_model]["provider"]
+            
+            # Save settings if changed
+            if current_model != st.session_state.config.get("model") or current_engine != st.session_state.config.get("engine"):
+                st.session_state.config["model"] = current_model
                 st.session_state.config["engine"] = current_engine
                 save_config(st.session_state.config)
+                st.rerun()
             
             if current_engine == "hf":
-                st.markdown("**NVIDIA Cosmos 3 設定**")
+                st.markdown("**Hugging Face 設定**")
                 hf_token = st.text_input(
                     "Hugging Face Read Token",
                     value=st.session_state.config.get("hf_token", ""),
@@ -392,6 +469,7 @@ def main():
                     st.session_state.config["hf_token"] = hf_token
                     save_config(st.session_state.config)
                 st.markdown("[👉 如何獲取 Token？](https://huggingface.co/settings/tokens)")
+                st.caption(f"目前請求端點: `https://api-inference.huggingface.co/models/{current_model}`")
                 
             st.markdown("**自訂 Gemini API Key (選填)**")
             gemini_key = st.text_input(
@@ -432,7 +510,7 @@ def main():
                                 key_to_use = st.session_state.config.get("gemini_key", "")
                                 optimized = optimize_prompt(prompt_input, key_to_use)
                                 st.session_state.prompt = optimized
-                                st.success("AI 提示詞最佳化完成！已特別針對 Cosmos 3 優化物理和光影細節。")
+                                st.success("AI 提示詞最佳化完成！已針對生圖模型優化物理、材質與光影細節。")
                                 st.rerun()
                             except Exception as e:
                                 st.error(f"AI 優化失敗: {e}")
@@ -500,8 +578,9 @@ def main():
         st.write("")
 
         # Generate Button
+        model_display_name = MODELS.get(current_model, {}).get("name", "AI").split(" (")[0]
         st.markdown('<div class="main-btn-wrapper">', unsafe_allow_html=True)
-        if st.button("🚀 開始生成 Cosmos 3 畫像", use_container_width=True, type="primary"):
+        if st.button(f"🚀 開始生成 {model_display_name} 畫像", use_container_width=True, type="primary"):
             if not st.session_state.prompt.strip():
                 st.warning("請輸入生圖提示詞 (Prompt)！")
             else:
@@ -515,22 +594,22 @@ def main():
                 
                 # Step 1
                 progress_bar.progress(10)
-                status_text.markdown("🔄 **正在建立安全連接與 API 驗證...**")
+                status_text.markdown(f"🔄 **正在連接生圖伺服器與驗證...**")
                 step1.markdown("⏳ 正在建立安全連接與 API 驗證...")
                 time.sleep(0.8)
                 
                 # Step 2
                 progress_bar.progress(35)
-                status_text.markdown("🔄 **分發 MoT 去噪張量與物理模型計算...**")
+                status_text.markdown(f"🔄 **載入並分發「{model_display_name}」張量權重...**")
                 step1.markdown("✅ 正在建立安全連接與 API 驗證...")
-                step2.markdown("⏳ 分發 MoT 去噪張量與物理模型計算...")
+                step2.markdown(f"⏳ 載入並分發「{model_display_name}」張量權重...")
                 time.sleep(1.0)
                 
                 # Step 3
                 progress_bar.progress(65)
-                status_text.markdown("🔄 **高解析度物理擴散演算進行中...**")
-                step2.markdown("✅ 分發 MoT 去噪張量與物理模型計算...")
-                step3.markdown("⏳ 高解析度物理擴散演算進行中 (共需 28 步)...")
+                status_text.markdown("🔄 **擴散去噪演算與影像還原進行中...**")
+                step2.markdown(f"✅ 載入並分發「{model_display_name}」張量權重...")
+                step3.markdown("⏳ 高解析度物理擴散去噪演算進行中...")
                 
                 try:
                     # Call API
@@ -542,24 +621,24 @@ def main():
                         width = 1280 if current_ratio == "16:9" else (720 if current_ratio == "9:16" else 1024)
                         height = 720 if current_ratio == "16:9" else (1280 if current_ratio == "9:16" else 1024)
                         
-                        image_bytes = generate_image_hf(st.session_state.prompt, token, width, height)
+                        image_bytes = generate_image_hf(st.session_state.prompt, token, current_model, width, height)
                     else:
                         active_key = st.session_state.config.get("gemini_key", "").strip()
                         active_key = active_key or os.environ.get("GEMINI_API_KEY", "")
                         if not active_key:
-                            raise Exception("此功能需要輸入 Gemini API Key。請在「生成引擎設定」中輸入您的 Key！")
+                            raise Exception("此模型需要輸入 Gemini API Key。請在「生成引擎設定」中輸入您的 Key！")
                         
-                        image_bytes = generate_image_gemini(st.session_state.prompt, active_key, current_ratio)
+                        image_bytes = generate_image_gemini(st.session_state.prompt, active_key, current_model, current_ratio)
                     
                     # Step 4
                     progress_bar.progress(90)
                     status_text.markdown("🔄 **解碼潛在空間並合成最終像素...**")
-                    step3.markdown("✅ 高解析度物理擴散演算進行中...")
+                    step3.markdown("✅ 高解析度物理擴散去噪演算完成...")
                     step4.markdown("⏳ 解碼潛在空間並合成最終像素...")
                     time.sleep(0.8)
                     
                     # Save to local gallery
-                    save_image_to_gallery(image_bytes, st.session_state.prompt, current_engine, current_ratio)
+                    save_image_to_gallery(image_bytes, st.session_state.prompt, current_model, current_ratio)
                     
                     progress_bar.progress(100)
                     status_text.markdown("✨ **圖像渲染完畢！**")
@@ -567,7 +646,7 @@ def main():
                     st.success("圖像物理渲染生成完成！")
                     
                     # Display Result
-                    st.image(image_bytes, caption="生成結果", use_container_width=True)
+                    st.image(image_bytes, caption=f"由 {model_display_name} 生成", use_container_width=True)
                     
                     # Action buttons
                     col_dl, col_cp = st.columns(2)
@@ -575,7 +654,7 @@ def main():
                         st.download_button(
                             label="💾 儲存結果圖像",
                             data=image_bytes,
-                            file_name=f"Cosmos3-Image-{int(time.time())}.png",
+                            file_name=f"{model_display_name.replace(' ', '_')}-{int(time.time())}.png",
                             mime="image/png",
                             use_container_width=True
                         )
@@ -602,7 +681,7 @@ def main():
         gallery_items = load_gallery()
         
         if not gallery_items:
-            st.info("還沒有任何生成紀錄。立即前往生成器輸入您的靈感，Cosmos 3 將賦予其絕美的視覺物理真實感！")
+            st.info("還沒有任何生成紀錄。立即前往生成器輸入您的靈感，AI 將賦予其絕美的視覺物理真實感！")
         else:
             col_header, col_act = st.columns([3, 1])
             with col_header:
@@ -632,7 +711,7 @@ def main():
                             # Render image
                             st.image(item["img_path"], use_container_width=True)
                             st.markdown(f"🗓️ **時間:** `{item['time_str']}`")
-                            st.markdown(f"⚙️ **引擎:** `{item['engine']}` | 📱 **比例:** `{item['ratio']}`")
+                            st.markdown(f"⚙️ **模型:** `{item['engine']}` | 📱 **比例:** `{item['ratio']}`")
                             st.text_area("提示詞", value=item["prompt"], height=70, disabled=True, key=f"txt_{item['timestamp']}")
                             
                             col_g_re, col_g_dl = st.columns(2)
@@ -659,26 +738,27 @@ def main():
     # ================= TAB 3: INFO =================
     with tab_info:
         st.markdown("""
-        ### NVIDIA Cosmos 3 技術指南
-        了解世界首款實體 AI 萬能大模型 (Omnimodal)
+        ### AI 多模型生成技術指南
+        了解本 Studio 支援的多款世界頂尖影像生成模型。
         
-        #### 🧬 領先全球的開源文生圖架構
-        **NVIDIA Cosmos 3** 是一款參數量達 64B 的物理世界基礎大模型。在 Artificial Analysis 文生圖及影片生成基準排行榜上榮登**開源模型第一名**。
+        #### 🧬 支援模型介紹
+        * **NVIDIA Cosmos 3**: 參數量達 64B 的物理世界基礎大模型，在開源文生圖排行榜上榮登第一。擅長精準光影渲染與極具動態真實感的場景建構。
+        * **FLUX.1 Schnell / Dev**: 由 Black Forest Labs 開發的頂尖模型，具備優秀的提示詞遵循度與文字渲染能力，畫面細膩，色彩表現張力十足。
+        * **Stable Diffusion 3.5 Large / XL**: 經典的開源生成模型家族，社群生態強大，擅長人物、插畫及各式寫實風格。
+        * **Google Imagen 4.0 / 3.0**: 來自 Google DeepMind 的先進商業模型，出圖速度極快，能生成文字和精緻的寫實畫面。
         
-        其採用獨創的 **Mixture-of-Transformers (MoT)** 混合架構，能完美模擬真實物理定律中的重力、光影反射、以及物體間的精確力學碰撞，生成的畫面細緻且富有驚人的真實世界物理感知。
-        
-        #### 🚀 三步配置 Cosmos 3
-        1. **註冊並登入 Hugging Face:** 前往 huggingface.co 註冊帳號，即可享用免費的推論額度。
-        2. **取得存取權金鑰 (Read Token):** 在個人 Settings -> Access Tokens 創建一個擁有「Read」權限的安全 Token。
-        3. **貼入本 App 展開創作:** 點擊生成器頂部的「引擎設定」，切換到 NVIDIA Cosmos 3 並貼上 Token，即刻解鎖 64B 大模型生成！
+        #### 🚀 使用說明
+        1. **Hugging Face 模型**: 需要至 [huggingface.co](https://huggingface.co/) 註冊並在 Settings -> Access Tokens 生成一個 `Read` 權限的 Token。
+        2. **Gemini API**: 提供免 Key 預設體驗，若要使用高頻率請求，建議前往 [Google AI Studio](https://aistudio.google.com/) 申請免費 API Key 並貼入。
         
         #### 📊 模型規格與指標
-        | 技術指標 | 規格描述 |
-        | :--- | :--- |
-        | **模型參數大小** | 64B (Super) / 16B (Nano) |
-        | **支援畫面比例** | 1:1, 16:9, 9:16, 4:3, 3:4 |
-        | **主要能力** | 物理規律高精確度合成、高真實感去噪 |
-        | **AI Upsampler** | 代理人提示詞重構硬體 (Agentic Upsampling) |
+        | 模型名稱 | 提供商 | 參數量/技術 | 特點 |
+        | :--- | :--- | :--- | :--- |
+        | **NVIDIA Cosmos 3** | NVIDIA | 64B / MoT | 物理擬真度極高、高階光影 |
+        | **FLUX.1 Dev** | BFL | 12B / Rectified Flow | 細節精緻度高、手部字形極佳 |
+        | **FLUX.1 Schnell** | BFL | 12B / Distilled | 速度極快、4步即可完成去噪 |
+        | **SD 3.5 Large** | Stability AI | 8B / MMDiT | 遵循提示詞、多風格融合 |
+        | **Imagen 4.0** | Google | DeepMind Proprietary | 速度極快、中文理解力強 |
         """)
 
 if __name__ == "__main__":
@@ -689,7 +769,11 @@ if __name__ == "__main__":
         file_path = os.path.abspath(__file__)
         print(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] 正在啟動 Streamlit 伺服器...")
         try:
-            subprocess.run([sys.executable, "-m", "streamlit", "run", file_path])
+            subprocess.run([
+                sys.executable, "-m", "streamlit", "run", file_path,
+                "--server.headless=true",
+                "--browser.gatherUsageStats=false"
+            ])
         except KeyboardInterrupt:
             print("\n伺服器已安全關閉。")
             sys.exit(0)
