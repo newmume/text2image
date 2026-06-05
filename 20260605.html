@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>墨韻生圖 · AI 丹青工作室</title>
+  <meta name="description" content="整合 Puter.js / Pollinations / Gemini / Hugging Face 的多引擎 AI 文字生圖工具，中國水墨風格介面。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <script src="https://js.puter.com/v2/"></script>
+
+  <style>
+    /* ===== CSS 變數：水墨調色板 ===== */
+    :root {
+      --ink-black:   #1a0f0a;
+      --ink-dark:    #2c1810;
+      --ink-red:     #8b1a1a;
+      --ink-crimson: #c0392b;
+      --ink-brown:   #8b4513;
+      --ink-gold:    #c9a87a;
+      --ink-light:   #c9956a;
+      --paper:       #f5f0e8;
+      --paper-light: #fdf8f0;
+      --paper-warm:  #f0e8d8;
+      --text-dark:   #2c1810;
+      --text-mid:    #6b4c2a;
+      --text-light:  #8b6a40;
+    }
+
+    /* ===== 全局重置 ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      font-size: 15px;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Noto Sans TC', 'Microsoft JhengHei', serif;
+      background-color: var(--paper);
+      background-image:
+        radial-gradient(circle at 15% 15%, rgba(139,90,60,.07) 0%, transparent 50%),
+        radial-gradient(circle at 85% 85%, rgba(90,60,30,.06) 0%, transparent 50%),
+        url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%238b6914' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      color: var(--text-dark);
+      min-height: 100vh;
+    }
+
+    /* ===== 頁首 ===== */
+    header {
+      background: rgba(245,240,232,.96);
+      border-bottom: 2px solid var(--ink-brown);
+      padding: .9rem 1.6rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 2px 12px rgba(139,69,19,.12);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: .7rem;
+    }
+    .logo-icon {
+      width: 42px; height: 42px;
+      background: linear-gradient(135deg, var(--ink-red), var(--ink-brown));
+      border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 2px 8px rgba(139,26,26,.35);
+    }
+    .logo-text h1 {
+      font-family: 'Noto Serif TC', serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--ink-dark);
+      letter-spacing: .05em;
+    }
+    .logo-text p {
+      font-size: .7rem;
+      color: var(--text-light);
+      letter-spacing: .08em;
+    }
+    .header-badge {
+      background: var(--ink-red);
+      color: #fdf8f0;
+      font-size: .65rem;
+      font-weight: 700;
+      padding: .18rem .55rem;
+      border-radius: 2px;
+      letter-spacing: .1em;
+      transform: rotate(-1.5deg);
+      display: inline-block;
+    }
+
+    /* ===== 主佈局 ===== */
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 1.4rem 1.2rem;
+      display: grid;
+      grid-template-columns: minmax(340px,420px) 1fr;
+      gap: 1.4rem;
+      align-items: start;
+    }
+
+    /* ===== 卡片 ===== */
+    .card {
+      background: rgba(253,248,240,.88);
+      border: 1px solid var(--ink-gold);
+      border-top: 3px solid var(--ink-brown);
+      border-radius: 4px;
+      padding: 1.2rem 1.3rem;
+      margin-bottom: 1rem;
+      box-shadow: 2px 2px 8px rgba(139,69,19,.1), inset 0 1px 0 rgba(255,255,255,.7);
+      position: relative;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--ink-red), var(--ink-crimson), var(--ink-brown), var(--ink-crimson), var(--ink-red));
+      border-radius: 4px 4px 0 0;
+    }
+    .card-title {
+      font-family: 'Noto Serif TC', serif;
+      font-size: .95rem;
+      font-weight: 700;
+      color: var(--ink-dark);
+      border-left: 3px solid var(--ink-crimson);
+      padding-left: .55rem;
+      margin-bottom: .9rem;
+      letter-spacing: .04em;
+    }
+
+    /* ===== 引擎選擇器 ===== */
+    .engine-options { display: flex; flex-direction: column; gap: .45rem; }
+    .engine-option {
+      display: flex; align-items: center; gap: .7rem;
+      padding: .55rem .7rem;
+      border: 1px solid #e8d5b5;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all .18s ease;
+      background: rgba(253,248,240,.5);
+    }
+    .engine-option:hover { background: rgba(201,168,122,.15); border-color: var(--ink-gold); }
+    .engine-option.selected {
+      background: rgba(139,26,26,.08);
+      border-color: var(--ink-red);
+      box-shadow: 0 0 0 2px rgba(139,26,26,.1);
+    }
+    .engine-option input[type="radio"] { accent-color: var(--ink-red); cursor: pointer; }
+    .engine-option label { cursor: pointer; font-size: .82rem; color: var(--text-dark); line-height: 1.4; }
+    .engine-badge {
+      font-size: .6rem; font-weight: 700; padding: .1rem .35rem;
+      border-radius: 2px; background: #fdf0e0; border: 1px solid var(--ink-light);
+      color: var(--ink-red); white-space: nowrap; margin-left: auto;
+    }
+    .engine-badge.free { background: #f0fdf4; border-color: #6a9a50; color: #3a7a20; }
+
+    /* ===== API Key 區域 ===== */
+    .api-key-section { display: none; }
+    .api-key-section.visible { display: block; }
+    .api-note {
+      font-size: .77rem; color: var(--text-mid);
+      padding: .5rem .7rem;
+      background: rgba(200,185,150,.18);
+      border: 1px solid #d4b98a;
+      border-radius: 3px;
+      margin-bottom: .6rem;
+    }
+
+    /* ===== 輸入元件 ===== */
+    label {
+      display: block; font-size: .82rem; font-weight: 500;
+      color: var(--text-mid); margin-bottom: .3rem; letter-spacing: .02em;
+    }
+    input[type="text"], input[type="password"], select, textarea {
+      width: 100%;
+      padding: .55rem .7rem;
+      border: 1px solid var(--ink-gold);
+      border-radius: 3px;
+      background: var(--paper-light);
+      color: var(--text-dark);
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: .83rem;
+      transition: border-color .18s, box-shadow .18s;
+      outline: none;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--ink-brown);
+      box-shadow: 0 0 0 2px rgba(139,69,19,.14);
+    }
+    textarea { resize: vertical; line-height: 1.6; }
+
+    /* ===== 快速範本選擇 ===== */
+    .quick-select { margin-bottom: .8rem; }
+
+    /* ===== 字數計數 ===== */
+    .char-count { text-align: right; font-size: .72rem; color: var(--text-light); margin-top: .3rem; }
+
+    /* ===== 進階設定折疊 ===== */
+    details {
+      border: 1px solid var(--ink-gold);
+      border-radius: 3px;
+      background: rgba(253,248,240,.5);
+    }
+    summary {
+      padding: .6rem .8rem;
+      cursor: pointer;
+      font-size: .85rem; font-weight: 600;
+      color: var(--text-dark);
+      user-select: none;
+      list-style: none;
+      display: flex; align-items: center; gap: .5rem;
+    }
+    summary::after { content: '▼'; font-size: .65rem; margin-left: auto; transition: transform .2s; }
+    details[open] summary::after { transform: rotate(-180deg); }
+    .advanced-content { padding: .8rem; display: flex; flex-direction: column; gap: .7rem; }
+
+    /* ===== 比例 & 風格按鈕組 ===== */
+    .btn-group { display: flex; gap: .5rem; flex-wrap: wrap; }
+    .btn-toggle {
+      flex: 1; min-width: 80px;
+      padding: .45rem .5rem;
+      border: 1px solid var(--ink-gold);
+      border-radius: 3px;
+      background: var(--paper-light);
+      color: var(--text-mid);
+      font-size: .77rem; font-weight: 500;
+      cursor: pointer; text-align: center;
+      transition: all .18s;
+    }
+    .btn-toggle:hover { background: rgba(201,168,122,.18); border-color: var(--ink-brown); }
+    .btn-toggle.active {
+      background: rgba(139,26,26,.1);
+      border-color: var(--ink-red);
+      color: var(--ink-red);
+      font-weight: 700;
+      box-shadow: 0 0 0 2px rgba(139,26,26,.12);
+    }
+
+    /* ===== 種子設定 ===== */
+    .seed-row { display: flex; align-items: center; gap: .6rem; }
+    .seed-row label { margin: 0; white-space: nowrap; }
+    .seed-row input[type="number"] { flex: 1; }
+    .seed-row input[type="checkbox"] { accent-color: var(--ink-red); width: 16px; height: 16px; cursor: pointer; }
+
+    /* ===== Slider ===== */
+    input[type="range"] {
+      width: 100%; accent-color: var(--ink-red);
+      background: transparent; padding: 0;
+    }
+    .slider-row { display: flex; align-items: center; gap: .8rem; }
+    .slider-val {
+      background: var(--ink-red); color: #fdf8f0;
+      font-size: .72rem; font-weight: 700;
+      padding: .15rem .4rem; border-radius: 2px; min-width: 22px; text-align: center;
+    }
+
+    /* ===== 生成按鈕 ===== */
+    #generate-btn {
+      width: 100%;
+      padding: .75rem 1rem;
+      background: linear-gradient(135deg, var(--ink-red) 0%, #a52a2a 100%);
+      color: #fdf8f0;
+      border: 1px solid #6b1010;
+      border-radius: 3px;
+      font-family: 'Noto Sans TC', serif;
+      font-size: 1rem; font-weight: 700;
+      letter-spacing: .12em;
+      cursor: pointer;
+      box-shadow: 0 3px 10px rgba(139,26,26,.3), inset 0 1px 0 rgba(255,255,255,.12);
+      transition: all .2s;
+      display: flex; align-items: center; justify-content: center; gap: .5rem;
+    }
+    #generate-btn:hover {
+      background: linear-gradient(135deg, #a52a2a 0%, var(--ink-crimson) 100%);
+      box-shadow: 0 5px 16px rgba(139,26,26,.4);
+      transform: translateY(-1px);
+    }
+    #generate-btn:active { transform: translateY(0); }
+    #generate-btn:disabled {
+      opacity: .6; cursor: not-allowed; transform: none;
+    }
+
+    /* ===== 畫布（右欄）===== */
+    #canvas-panel {
+      position: sticky;
+      top: 80px;
+    }
+    .canvas-title {
+      font-family: 'Noto Serif TC', serif;
+      font-size: 1rem; font-weight: 600;
+      color: var(--text-dark);
+      border-bottom: 1px solid var(--ink-gold);
+      padding-bottom: .4rem;
+      margin-bottom: .9rem;
+      letter-spacing: .05em;
+    }
+
+    .canvas-box {
+      background: var(--paper-light);
+      background-image:
+        linear-gradient(to right, rgba(139,90,60,.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(139,90,60,.05) 1px, transparent 1px);
+      background-size: 24px 24px;
+      border: 2px solid var(--ink-gold);
+      border-radius: 4px;
+      min-height: 500px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 1.5rem;
+      box-shadow: inset 0 2px 12px rgba(139,90,60,.07);
+      transition: all .3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* 初始佔位 */
+    #placeholder {
+      text-align: center;
+      animation: fadeIn .5s ease;
+    }
+    #placeholder .placeholder-icon { font-size: 3.5rem; margin-bottom: .8rem; }
+    #placeholder h3 {
+      font-family: 'Noto Serif TC', serif;
+      color: var(--text-mid); font-size: 1.05rem; font-weight: 600;
+      letter-spacing: .05em; margin-bottom: .5rem;
+    }
+    #placeholder p { color: var(--text-light); font-size: .82rem; line-height: 1.7; max-width: 340px; }
+
+    /* Loading 動畫 */
+    #loading-state {
+      display: none; text-align: center;
+      animation: fadeIn .4s ease;
+    }
+    .ink-spinner {
+      width: 72px; height: 72px;
+      margin: 0 auto 1.2rem;
+      position: relative;
+    }
+    .ink-spinner::before {
+      content: '';
+      position: absolute; inset: 0;
+      border-radius: 50%;
+      border: 4px solid #f0e8d8;
+    }
+    .ink-spinner::after {
+      content: '';
+      position: absolute; inset: 0;
+      border-radius: 50%;
+      border: 4px solid transparent;
+      border-top-color: var(--ink-red);
+      border-right-color: var(--ink-brown);
+      animation: spin 1s linear infinite;
+    }
+    .ink-spinner-inner {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.6rem;
+    }
+    #loading-state h4 { color: var(--text-mid); font-size: .9rem; font-weight: 600; }
+    #loading-state p { color: var(--text-light); font-size: .78rem; margin-top: .4rem; }
+
+    /* 結果區域 */
+    #result-state { display: none; width: 100%; animation: fadeIn .5s ease; }
+    .result-images {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: .9rem;
+      width: 100%;
+      margin-bottom: .9rem;
+    }
+    .result-img-wrapper {
+      background: var(--paper-light);
+      border: 1px solid var(--ink-gold);
+      border-radius: 4px;
+      overflow: hidden;
+      box-shadow: 2px 2px 8px rgba(139,90,60,.12);
+      display: flex; flex-direction: column;
+    }
+    .result-img-wrapper img {
+      width: 100%; height: auto; display: block;
+      object-fit: contain; max-height: 400px;
+    }
+    .result-img-footer {
+      padding: .5rem .7rem;
+      display: flex; align-items: center; justify-content: space-between;
+      border-top: 1px solid #e8d5b5;
+    }
+    .result-img-label { font-size: .72rem; color: var(--text-light); }
+
+    .dl-btn {
+      padding: .3rem .65rem;
+      background: rgba(253,248,240,.9);
+      border: 1px solid var(--ink-gold);
+      border-radius: 2px;
+      color: var(--text-mid);
+      font-size: .72rem; font-weight: 600;
+      cursor: pointer; text-decoration: none;
+      display: inline-flex; align-items: center; gap: .3rem;
+      transition: all .18s;
+    }
+    .dl-btn:hover { background: rgba(201,168,122,.2); border-color: var(--ink-brown); color: var(--text-dark); }
+
+    .success-bar {
+      width: 100%; text-align: center;
+      padding: .55rem;
+      background: rgba(200,230,180,.25);
+      border: 1px solid #6a9a50;
+      border-radius: 3px;
+      font-size: .82rem; font-weight: 600;
+      color: #3a7a20;
+    }
+
+    /* 錯誤狀態 */
+    #error-state { display: none; text-align: center; animation: fadeIn .4s ease; }
+    #error-state .error-icon { font-size: 3rem; margin-bottom: .6rem; }
+    #error-state h4 { color: #b91c1c; font-size: .9rem; font-weight: 600; margin-bottom: .4rem; }
+    #error-state p { color: var(--text-light); font-size: .78rem; max-width: 320px; line-height: 1.6; }
+    .retry-btn {
+      margin-top: .8rem;
+      padding: .45rem 1rem;
+      background: var(--ink-red);
+      color: #fdf8f0;
+      border: none; border-radius: 3px;
+      font-size: .8rem; font-weight: 600;
+      cursor: pointer; letter-spacing: .05em;
+    }
+    .retry-btn:hover { background: var(--ink-crimson); }
+
+    /* ===== Alert 訊息 ===== */
+    .alert {
+      padding: .55rem .8rem;
+      border-radius: 3px;
+      font-size: .8rem; line-height: 1.5;
+      margin: .6rem 0;
+      display: none;
+    }
+    .alert.show { display: block; }
+    .alert-success { background: rgba(200,230,180,.25); border: 1px solid #6a9a50; color: #3a7a20; }
+    .alert-info    { background: rgba(200,185,150,.2); border: 1px solid #c9a060; color: var(--text-mid); }
+    .alert-error   { background: rgba(220,130,130,.15); border: 1px solid #b05050; color: #b91c1c; }
+
+    /* ===== 頁尾 ===== */
+    footer {
+      text-align: center;
+      padding: 1.2rem;
+      margin-top: 2rem;
+      border-top: 1px solid var(--ink-gold);
+      color: var(--text-light);
+      font-size: .72rem;
+      letter-spacing: .04em;
+    }
+    footer .ink-seal {
+      display: inline-block;
+      background: var(--ink-red); color: #fdf8f0;
+      font-size: .6rem; font-weight: 700;
+      padding: .12rem .4rem; border-radius: 2px;
+      transform: rotate(-1.5deg); letter-spacing: .1em;
+    }
+
+    /* ===== 動畫 ===== */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+    /* ===== 響應式 ===== */
+    @media (max-width: 780px) {
+      .container { grid-template-columns: 1fr; }
+      #canvas-panel { position: static; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== 頁首 ===== -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🖌️</div>
+    <div class="logo-text">
+      <h1>墨韻生圖</h1>
+      <p>AI STUDIO · 丹青多引擎版</p>
+    </div>
+  </div>
+  <span class="header-badge">旗艦多引擎</span>
+</header>
+
+<!-- ===== 主體 ===== -->
+<main class="container">
+
+  <!-- ── 左側控制面板 ── -->
+  <aside id="control-panel">
+
+    <!-- 1. 選擇引擎 -->
+    <div class="card">
+      <p class="card-title">🔮 一、選擇生圖引擎（Engine）</p>
+      <div class="engine-options" id="engine-group">
+
+        <label class="engine-option" id="opt-cosmos">
+          <input type="radio" name="engine" value="cosmos" id="engine-cosmos">
+          <span>
+            <strong>NVIDIA Cosmos 3 Super</strong><br>
+            <small style="color:var(--text-light)">Hugging Face · 需 HF Token</small>
+          </span>
+          <span class="engine-badge">HF</span>
+        </label>
+
+        <label class="engine-option" id="opt-flux-hf">
+          <input type="radio" name="engine" value="flux-hf" id="engine-flux-hf">
+          <span>
+            <strong>FLUX.1-schnell</strong><br>
+            <small style="color:var(--text-light)">Hugging Face · 需 HF Token</small>
+          </span>
+          <span class="engine-badge">HF</span>
+        </label>
+
+        <label class="engine-option" id="opt-gemini">
+          <input type="radio" name="engine" value="gemini" id="engine-gemini">
+          <span>
+            <strong>Gemini 2.5 Flash Image</strong><br>
+            <small style="color:var(--text-light)">Google API · 需 API Key</small>
+          </span>
+          <span class="engine-badge">Google</span>
+        </label>
+
+        <label class="engine-option selected" id="opt-puter">
+          <input type="radio" name="engine" value="puter" id="engine-puter" checked>
+          <span>
+            <strong>Puter.js · Stable Diffusion XL</strong><br>
+            <small style="color:var(--text-light)">瀏覽器端 · 完全免金鑰</small>
+          </span>
+          <span class="engine-badge free">免費</span>
+        </label>
+
+        <label class="engine-option" id="opt-pollinations">
+          <input type="radio" name="engine" value="pollinations" id="engine-pollinations">
+          <span>
+            <strong>Pollinations AI · Flux</strong><br>
+            <small style="color:var(--text-light)">完全免金鑰</small>
+          </span>
+          <span class="engine-badge free">免費</span>
+        </label>
+
+      </div><!-- /engine-options -->
+
+      <!-- HF Token 輸入 -->
+      <div class="api-key-section" id="hf-section" style="margin-top:.8rem">
+        <p class="api-note">💡 使用 Hugging Face 模型需輸入 API Token。</p>
+        <label for="hf-token">Hugging Face API Token：</label>
+        <input type="password" id="hf-token" placeholder="hf_...">
+      </div>
+
+      <!-- Gemini Key 輸入 -->
+      <div class="api-key-section" id="gemini-section" style="margin-top:.8rem">
+        <p class="api-note">💡 使用 Gemini 引擎需輸入 Google API Key。</p>
+        <label for="gemini-key">Gemini API Key：</label>
+        <input type="password" id="gemini-key" placeholder="AIzaSy...">
+      </div>
+
+      <!-- 免費引擎提示 -->
+      <div id="free-notice" class="alert alert-success show" style="margin-top:.8rem">
+        🎋 此引擎免金鑰，可直接點擊生圖！
+      </div>
+
+    </div><!-- /card 1 -->
+
+    <!-- 2. 提示詞輸入 -->
+    <div class="card">
+      <p class="card-title">📝 二、輸入創意提示詞（Prompt）</p>
+
+      <div class="quick-select">
+        <label for="quick-prompt">快速套用範本：</label>
+        <select id="quick-prompt">
+          <option value="">自行輸入...</option>
+          <option value="ghibli">🌿 吉卜力風格</option>
+          <option value="watercolor">🌸 日系水彩</option>
+          <option value="cute3d">🐹 可愛 3D</option>
+          <option value="scifi">🚀 科幻奇幻</option>
+          <option value="retro">🎞️ 復古風</option>
+          <option value="oilpainting">🎨 西洋油畫</option>
+          <option value="inkwash">🏮 中國水墨畫</option>
+        </select>
+      </div>
+
+      <label for="prompt-input">創意描述（英文效果更佳）：</label>
+      <textarea id="prompt-input" rows="5"
+        placeholder="例如：A misty mountain with ancient pine trees, traditional Chinese ink wash painting style, sumi-e brushstrokes, poetic atmosphere..."></textarea>
+      <div class="char-count"><span id="char-count">0</span> / 500 字元</div>
+    </div><!-- /card 2 -->
+
+    <!-- 3. 進階設定 -->
+    <div class="card" style="padding:0; overflow:hidden;">
+      <details>
+        <summary>🛠️ 三、高級自訂設置（Advanced Options）</summary>
+        <div class="advanced-content">
+
+          <!-- 比例 -->
+          <div>
+            <label>圖片比例（Aspect Ratio）：</label>
+            <div class="btn-group" id="ratio-group">
+              <button class="btn-toggle active" data-ratio="1024,1024">⬛ 1:1 正方</button>
+              <button class="btn-toggle" data-ratio="1024,576">🖥️ 16:9 橫向</button>
+              <button class="btn-toggle" data-ratio="576,1024">📱 9:16 直式</button>
+            </div>
+          </div>
+
+          <!-- 風格 -->
+          <div>
+            <label>藝術風格疊加（Style）：</label>
+            <div class="btn-group" id="style-group">
+              <button class="btn-toggle active" data-style="">無</button>
+              <button class="btn-toggle" data-style="photorealistic, hyperrealistic, 8k resolution">📷 寫實</button>
+              <button class="btn-toggle" data-style="anime key visual, watercolor illustration">🌸 動漫</button>
+              <button class="btn-toggle" data-style="cyberpunk style, neon lights, rainy street">🤖 賽博</button>
+              <button class="btn-toggle" data-style="cinematic shot, dramatic volumetric lighting">🎬 電影</button>
+              <button class="btn-toggle" data-style="cute 3d clay illustration, smooth textures">🏺 3D</button>
+              <button class="btn-toggle" data-style="traditional Chinese ink wash painting, sumi-e brushstrokes, minimal color">🏮 水墨</button>
+            </div>
+          </div>
+
+          <!-- 負向提示詞 -->
+          <div>
+            <label for="neg-prompt">排除提示詞（Negative Prompt）：</label>
+            <input type="text" id="neg-prompt"
+              value="blurry, low quality, ugly, distorted, lowres, text, signature">
+          </div>
+
+          <!-- 種子 -->
+          <div>
+            <div class="seed-row">
+              <input type="checkbox" id="random-seed" checked>
+              <label for="random-seed" style="margin:0;">自動隨機種子</label>
+            </div>
+            <input type="number" id="seed-val" value="42" min="0" max="99999999"
+              style="margin-top:.4rem" disabled>
+          </div>
+
+          <!-- 張數 -->
+          <div>
+            <label>生成張數（Number of Images）：</label>
+            <div class="slider-row">
+              <input type="range" id="num-images" min="1" max="4" value="1">
+              <span class="slider-val" id="num-images-val">1</span>
+            </div>
+          </div>
+
+        </div><!-- /advanced-content -->
+      </details>
+    </div><!-- /card 3 -->
+
+    <!-- 生成按鈕 -->
+    <button id="generate-btn">
+      <i class="fa-solid fa-paintbrush"></i> 揮毫落紙・開始生圖
+    </button>
+
+  </aside><!-- /control-panel -->
+
+  <!-- ── 右側畫布 ── -->
+  <section id="canvas-panel">
+    <div class="card" style="padding:1rem 1.2rem;">
+      <p class="canvas-title">🖼️ 即時渲染畫布（丹青成品）</p>
+
+      <div class="canvas-box" id="canvas-box">
+
+        <!-- 佔位畫面 -->
+        <div id="placeholder">
+          <div class="placeholder-icon">🖌️</div>
+          <h3>筆墨已備，靜候揮毫</h3>
+          <p>於左側輸入創意靈感，調整引擎與風格，<br>點擊「揮毫落紙」後丹青作品即刻呈現。</p>
+        </div>
+
+        <!-- Loading -->
+        <div id="loading-state">
+          <div class="ink-spinner">
+            <div class="ink-spinner-inner">🖌️</div>
+          </div>
+          <h4 id="loading-title">丹青師揮毫中，請稍候...</h4>
+          <p id="loading-sub">正在向繪圖伺服器傳送請求</p>
+        </div>
+
+        <!-- 結果 -->
+        <div id="result-state">
+          <div class="result-images" id="result-images"></div>
+          <div class="success-bar" id="success-bar"></div>
+        </div>
+
+        <!-- 錯誤 -->
+        <div id="error-state">
+          <div class="error-icon">⚠️</div>
+          <h4>生圖失敗</h4>
+          <p id="error-msg">請確認網路連線或切換至免金鑰引擎重試。</p>
+          <button class="retry-btn" onclick="resetCanvas()">↩ 重新嘗試</button>
+        </div>
+
+      </div><!-- /canvas-box -->
+    </div>
+  </section>
+
+</main>
+
+<!-- ===== 頁尾 ===== -->
+<footer>
+  🖌️ 墨韻生圖 · AI 丹青工作室 · 旗艦多引擎版
+  &nbsp;|&nbsp; Powered by Puter.js · Pollinations · Hugging Face · Google AI
+  &nbsp;|&nbsp; <span class="ink-seal">學生作業</span>
+</footer>
+
+<!-- ===== JavaScript ===== -->
+<script>
+// ── 快速 Prompt 對應表 ──
+const QUICK_PROMPTS = {
+  ghibli:      "A peaceful countryside village with lush green hills and windmills, whimsical Studio Ghibli animation style, hand-drawn, magical and warm",
+  watercolor:  "A beautiful Japanese garden with cherry blossoms, traditional temple in the background, delicate anime watercolor style, soft pastel tones",
+  cute3d:      "A cute chubby hamster wearing an astronaut helmet on the moon, holding a piece of cheese, 3D render, clay style, warm soft lighting",
+  scifi:       "A futuristic floating city above the clouds with crystal towers, ancient rune portals glowing purple, epic fantasy meets sci-fi, cinematic lighting",
+  retro:       "A 1960s retro diner scene with neon signs, classic cars outside, vintage warm tones, film grain texture, nostalgic Americana",
+  oilpainting: "A grand European oil painting of a noble knight on horseback at golden hour, dramatic chiaroscuro lighting, Baroque style, highly detailed",
+  inkwash:     "A traditional Chinese ink wash painting of misty mountain peaks with pine trees and a lone scholar, sumi-e brushstrokes, minimal palette, poetic"
+};
+
+// ── 當前選擇狀態 ──
+let selectedRatio = { w: 1024, h: 1024 };
+let selectedStyle = "";
+let numImages = 1;
+
+// ── DOM refs ──
+const engineRadios   = document.querySelectorAll('input[name="engine"]');
+const hfSection      = document.getElementById('hf-section');
+const geminiSection  = document.getElementById('gemini-section');
+const freeNotice     = document.getElementById('free-notice');
+const hfToken        = document.getElementById('hf-token');
+const geminiKey      = document.getElementById('gemini-key');
+const quickPrompt    = document.getElementById('quick-prompt');
+const promptInput    = document.getElementById('prompt-input');
+const charCount      = document.getElementById('char-count');
+const negPrompt      = document.getElementById('neg-prompt');
+const randomSeed     = document.getElementById('random-seed');
+const seedVal        = document.getElementById('seed-val');
+const numImagesSlider= document.getElementById('num-images');
+const numImagesVal   = document.getElementById('num-images-val');
+const generateBtn    = document.getElementById('generate-btn');
+
+// ── 引擎選擇高亮 ──
+engineRadios.forEach(radio => {
+  radio.addEventListener('change', () => {
+    document.querySelectorAll('.engine-option').forEach(el => el.classList.remove('selected'));
+    radio.closest('.engine-option').classList.add('selected');
+    updateEngineUI(radio.value);
+  });
+});
+
+function updateEngineUI(engine) {
+  hfSection.classList.remove('visible');
+  geminiSection.classList.remove('visible');
+  freeNotice.classList.remove('show');
+
+  if (engine === 'cosmos' || engine === 'flux-hf') {
+    hfSection.classList.add('visible');
+  } else if (engine === 'gemini') {
+    geminiSection.classList.add('visible');
+  } else {
+    freeNotice.classList.add('show');
+  }
+}
+
+// ── 快速 Prompt ──
+quickPrompt.addEventListener('change', () => {
+  const val = QUICK_PROMPTS[quickPrompt.value];
+  if (val) { promptInput.value = val; updateCharCount(); }
+  else if (!quickPrompt.value) { promptInput.value = ''; updateCharCount(); }
+});
+
+// ── 字數計數 ──
+promptInput.addEventListener('input', updateCharCount);
+function updateCharCount() {
+  const len = promptInput.value.length;
+  charCount.textContent = len;
+  charCount.style.color = len > 450 ? '#b91c1c' : '';
+}
+
+// ── 比例按鈕 ──
+document.querySelectorAll('#ratio-group .btn-toggle').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#ratio-group .btn-toggle').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const [w, h] = btn.dataset.ratio.split(',').map(Number);
+    selectedRatio = { w, h };
+  });
+});
+
+// ── 風格按鈕 ──
+document.querySelectorAll('#style-group .btn-toggle').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#style-group .btn-toggle').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedStyle = btn.dataset.style;
+  });
+});
+
+// ── 種子 ──
+randomSeed.addEventListener('change', () => {
+  seedVal.disabled = randomSeed.checked;
+  if (randomSeed.checked) seedVal.value = Math.floor(Math.random() * 999999);
+});
+
+// ── 張數 ──
+numImagesSlider.addEventListener('input', () => {
+  numImages = parseInt(numImagesSlider.value);
+  numImagesVal.textContent = numImages;
+});
+
+// ── 畫布狀態管理 ──
+function showState(state) {
+  ['placeholder','loading-state','result-state','error-state'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+  document.getElementById(state).style.display = 'flex';
+  if (state === 'loading-state') document.getElementById('loading-state').style.flexDirection = 'column';
+  if (state === 'result-state')  document.getElementById('result-state').style.flexDirection  = 'column';
+  if (state === 'error-state')   document.getElementById('error-state').style.flexDirection   = 'column';
+}
+
+function resetCanvas() {
+  showState('placeholder');
+  generateBtn.disabled = false;
+  generateBtn.innerHTML = '<i class="fa-solid fa-paintbrush"></i> 揮毫落紙・開始生圖';
+}
+
+// ── 圖片下載 ──
+function downloadImage(src, idx) {
+  const a = document.createElement('a');
+  a.href = src;
+  a.download = `ink_image_${idx}_${Date.now()}.png`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+// ── 建立結果圖片 DOM ──
+function appendResultImage(src, idx, label) {
+  const container = document.getElementById('result-images');
+  const wrapper = document.createElement('div');
+  wrapper.className = 'result-img-wrapper';
+
+  const img = document.createElement('img');
+  img.src = src;
+  img.alt = `Generated image ${idx}`;
+
+  const footer = document.createElement('div');
+  footer.className = 'result-img-footer';
+
+  const lbl = document.createElement('span');
+  lbl.className = 'result-img-label';
+  lbl.textContent = label;
+
+  const dlBtn = document.createElement('a');
+  dlBtn.className = 'dl-btn';
+  dlBtn.innerHTML = '<i class="fa-solid fa-download"></i> 下載';
+  dlBtn.href = '#';
+  dlBtn.addEventListener('click', e => { e.preventDefault(); downloadImage(src, idx); });
+
+  footer.appendChild(lbl);
+  footer.appendChild(dlBtn);
+  wrapper.appendChild(img);
+  wrapper.appendChild(footer);
+  container.appendChild(wrapper);
+}
+
+// ── Pollinations AI 生圖 ──
+async function generatePollinations(prompt, style, ratio, seed, count) {
+  const finalPrompt = style ? `${prompt}, ${style}` : prompt;
+  const encoded = encodeURIComponent(finalPrompt);
+  const promises = [];
+  for (let i = 0; i < count; i++) {
+    const s = seed + i * 137;
+    const url = `https://image.pollinations.ai/prompt/${encoded}?width=${ratio.w}&height=${ratio.h}&seed=${s}&model=flux&nologo=true`;
+    promises.push(
+      fetch(url).then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.blob();
+      }).then(blob => URL.createObjectURL(blob))
+    );
+  }
+  return Promise.all(promises);
+}
+
+// ── Puter.js 生圖 ──
+async function generatePuter(prompt, style, count) {
+  const finalPrompt = style ? `${prompt}, ${style}` : prompt;
+  if (typeof puter === 'undefined') throw new Error("Puter.js 尚未載入，請重新整理頁面。");
+  const promises = [];
+  for (let i = 0; i < count; i++) {
+    promises.push(
+      puter.ai.txt2img(finalPrompt, { model: "stabilityai/stable-diffusion-xl-base-1.0" })
+        .then(res => { if (!res || !res.src) throw new Error("Puter returned empty response"); return res.src; })
+    );
+  }
+  return Promise.all(promises);
+}
+
+// ── Gemini API 生圖 ──
+async function generateGemini(prompt, style, apiKey) {
+  const finalPrompt = style ? `${prompt}, ${style}` : prompt;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`;
+  const payload = {
+    contents: [{ parts: [{ text: finalPrompt }] }],
+    generationConfig: { responseModalities: ["TEXT", "IMAGE"] }
+  };
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `HTTP ${res.status}`);
+  }
+  const data = await res.json();
+  const parts = data?.candidates?.[0]?.content?.parts || [];
+  const imgPart = parts.find(p => p.inlineData);
+  if (!imgPart) throw new Error("API 回應未包含圖像資料");
+  const bytes = atob(imgPart.inlineData.data);
+  const arr = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  const blob = new Blob([arr], { type: imgPart.inlineData.mimeType || 'image/png' });
+  return [URL.createObjectURL(blob)];
+}
+
+// ── 主生成函數 ──
+generateBtn.addEventListener('click', async () => {
+  const prompt = promptInput.value.trim();
+  if (!prompt) {
+    alert('⚠️ 請先輸入創意描述！');
+    return;
+  }
+
+  const engine = document.querySelector('input[name="engine"]:checked').value;
+  const hfTok  = hfToken.value.trim();
+  const gKey   = geminiKey.value.trim();
+
+  if ((engine === 'cosmos' || engine === 'flux-hf') && !hfTok) {
+    alert('❌ 請先輸入 Hugging Face API Token！');
+    return;
+  }
+  if (engine === 'gemini' && !gKey) {
+    alert('❌ 請先輸入 Gemini API Key！');
+    return;
+  }
+
+  const seed = randomSeed.checked ? Math.floor(Math.random() * 999999) : parseInt(seedVal.value);
+  const count = numImages;
+
+  // 進入 loading 狀態
+  generateBtn.disabled = true;
+  generateBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 揮毫中...';
+  showState('loading-state');
+
+  const engineLabels = {
+    cosmos: 'NVIDIA Cosmos 3',
+    'flux-hf': 'FLUX.1-schnell',
+    gemini: 'Gemini 2.5 Flash',
+    puter: 'Puter.js · SDXL',
+    pollinations: 'Pollinations · Flux'
+  };
+  document.getElementById('loading-sub').textContent = `引擎：${engineLabels[engine] || engine}`;
+
+  const startTime = Date.now();
+
+  try {
+    let srcs = [];
+
+    if (engine === 'pollinations') {
+      srcs = await generatePollinations(prompt, selectedStyle, selectedRatio, seed, count);
+    } else if (engine === 'puter') {
+      srcs = await generatePuter(prompt, selectedStyle, count);
+    } else if (engine === 'gemini') {
+      srcs = await generateGemini(prompt, selectedStyle, gKey);
+    } else if (engine === 'cosmos' || engine === 'flux-hf') {
+      // Hugging Face via API (同 pollinations 以 Pollinations 替代示範，需後端支援 HF)
+      // 注意：HF API 有 CORS 限制，純前端呼叫會失敗，這裡提示需後端代理
+      throw new Error("Hugging Face 引擎需要後端伺服器代理（CORS 限制）。請改用 Puter.js 或 Pollinations 引擎。");
+    }
+
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+
+    // 清空並顯示結果
+    document.getElementById('result-images').innerHTML = '';
+    srcs.forEach((src, i) => appendResultImage(src, i + 1, `第 ${i+1} 張 · Seed: ${seed + i}`));
+
+    document.getElementById('success-bar').textContent = `🎉 丹青成功！費時：${elapsed} 秒`;
+    showState('result-state');
+
+  } catch (err) {
+    console.error(err);
+    document.getElementById('error-msg').textContent = err.message || '未知錯誤，請重試。';
+    showState('error-state');
+  } finally {
+    generateBtn.disabled = false;
+    generateBtn.innerHTML = '<i class="fa-solid fa-paintbrush"></i> 揮毫落紙・開始生圖';
+  }
+});
+
+// ── 初始化 ──
+updateCharCount();
+</script>
+</body>
+</html>
