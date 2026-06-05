@@ -5,10 +5,13 @@ import base64
 import requests
 import streamlit as st
 from PIL import Image
-from dotenv import load_dotenv
 
-# Load local .env file if present
-load_dotenv()
+# python-dotenv 為選用套件（本地開發用）；Streamlit Cloud 上可不安裝
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # Streamlit Cloud 環境不需要 .env 檔
 
 # ==========================================
 # SESSION STATE 初始化
