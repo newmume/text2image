@@ -16,7 +16,7 @@
 pip install streamlit google-genai pillow python-dotenv requests
 streamlit run 20260605.py
 ```
-開啟 → http://localhost:8501
+LiveDemo → https://text2image1.streamlit.app/
 
 ### HTML 版
 直接用瀏覽器開啟 `20260605.html`（Puter.js / Pollinations 引擎完全免金鑰）
