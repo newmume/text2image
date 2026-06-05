@@ -1,0 +1,12 @@
+# Ignore config and keys
+config.json
+
+# Ignore local generated images
+gallery/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Local streamlit configs
+.streamlit/
